@@ -115,7 +115,12 @@ pub fn edit_last_entry_handler(config: &Configs) -> Result<(), JournalEntryError
             .to_file_name(),
     );
 
-    Command::new("hx")
+    let editor = std::env::var_os("EDITOR").ok_or(JournalEntryError::EditorEnvNotSet)?;
+    if editor.is_empty() {
+        return Err(JournalEntryError::EditorEnvNotSet);
+    }
+
+    Command::new(editor)
         .arg(ent_path.clone().into_os_string())
         .status()
         .map_err(JournalEntryError::EditorError)?;
@@ -148,7 +153,13 @@ pub fn edit_all_entries_handler(config: &Configs) -> Result<(), JournalEntryErro
         .map(ToFileName::to_file_name)
         .map(|file_name| journal_path.clone().join(file_name).into_os_string());
 
-    Command::new("hx")
+    let editor = std::env::var_os("EDITOR").ok_or(JournalEntryError::EditorEnvNotSet)?;
+
+    if editor.is_empty() {
+        return Err(JournalEntryError::EditorEnvNotSet);
+    }
+
+    Command::new(editor)
         .args(es)
         .status()
         .map_err(JournalEntryError::EditorError)?;
@@ -191,6 +202,8 @@ pub enum JournalEntryError {
     NoEntries,
     #[error("editor returned error: {0}")]
     EditorError(std::io::Error),
+    #[error("editor env is not set")]
+    EditorEnvNotSet,
 }
 
 #[cfg(test)]
