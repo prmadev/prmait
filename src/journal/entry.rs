@@ -12,6 +12,14 @@ pub struct Entry {
     pub tag: Option<Vec<String>>,
 }
 
+const FILE_NAME_FORMAT: &str = "%Y-%m-%d-%H-%M-%S.json";
+
+impl ToFileName for Entry {
+    fn to_file_name(&self) -> String {
+        self.at.format(FILE_NAME_FORMAT).to_string()
+    }
+}
+
 impl PartialOrd for Entry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.at.partial_cmp(&other.at)
@@ -46,5 +54,15 @@ impl TryFrom<PathBuf> for Entry {
         let entry: Entry = serde_json::from_str(&content)
             .map_err(JournalEntryError::FileCouldNotDeserializeEntryFromJson)?;
         Ok(entry)
+    }
+}
+
+pub trait ToFileName {
+    fn to_file_name(&self) -> String;
+}
+
+impl ToFileName for DateTime<Local> {
+    fn to_file_name(&self) -> String {
+        self.format(FILE_NAME_FORMAT).to_string()
     }
 }

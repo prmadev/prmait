@@ -2,7 +2,10 @@ use clap::Parser;
 use color_eyre::eyre::Result;
 use prmait::{
     input::{Args, Configs},
-    journal::{entry::Entry, list_entries_handler, new_journal_entry_handler},
+    journal::{
+        edit_all_entries_handler, edit_last_entry_handler, entry::Entry, list_entries_handler,
+        new_journal_entry_handler,
+    },
 };
 use std::{path::PathBuf, sync::Arc};
 
@@ -34,6 +37,8 @@ fn main() -> Result<()> {
                     chrono::Local::now(),
                 )?,
                 prmait::input::JournalCommands::List => list_entries_handler(&config)?,
+                prmait::input::JournalCommands::EditLast => edit_last_entry_handler(&config)?,
+                prmait::input::JournalCommands::EditAll => edit_all_entries_handler(&config)?,
             },
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

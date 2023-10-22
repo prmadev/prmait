@@ -1,8 +1,8 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, process::Command, sync::Arc};
 
 use crate::input::Configs;
 
-use self::entry::Entry;
+use self::entry::{Entry, ToFileName};
 
 pub mod entry;
 
@@ -45,7 +45,7 @@ pub fn new_journal_entry_handler(
     _ = fs_extra::dir::create(&journal_path, false)
         .map_err(JournalEntryError::JournalDirCouldNotBeCreated);
 
-    let file_path = journal_path.join(at.format("%Y-%m-%d-%H-%M-%S.json").to_string());
+    let file_path = journal_path.join(at.to_file_name());
 
     if file_path.exists() {
         return Err(JournalEntryError::JournalEntryFileAlreadyExists);
@@ -87,6 +87,74 @@ pub fn list_entries_handler(config: &Configs) -> Result<(), JournalEntryError> {
 
     Ok(())
 }
+pub fn edit_last_entry_handler(config: &Configs) -> Result<(), JournalEntryError> {
+    let journal_path = config
+        .journal_configs
+        .clone()
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
+        .journal_path
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+
+    let s = fs_extra::dir::get_dir_content(&journal_path)
+        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+
+    let mut entries = s
+        .files
+        .into_iter()
+        .map(PathBuf::from)
+        .filter(isjson)
+        .map(Entry::try_from)
+        .try_fold(vec![], fold_or_err)?;
+
+    entries.sort();
+
+    let ent_path = journal_path.join(
+        entries
+            .last()
+            .ok_or(JournalEntryError::NoEntries)?
+            .to_file_name(),
+    );
+
+    Command::new("hx")
+        .arg(ent_path.clone().into_os_string())
+        .status()
+        .map_err(JournalEntryError::EditorError)?;
+
+    Ok(())
+}
+
+pub fn edit_all_entries_handler(config: &Configs) -> Result<(), JournalEntryError> {
+    let journal_path = config
+        .journal_configs
+        .clone()
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
+        .journal_path
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+
+    let s = fs_extra::dir::get_dir_content(&journal_path)
+        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+
+    let mut entries = s
+        .files
+        .into_iter()
+        .map(PathBuf::from)
+        .filter(isjson)
+        .map(Entry::try_from)
+        .try_fold(vec![], fold_or_err)?;
+
+    entries.sort();
+    let es = entries
+        .iter()
+        .map(ToFileName::to_file_name)
+        .map(|file_name| journal_path.clone().join(file_name).into_os_string());
+
+    Command::new("hx")
+        .args(es)
+        .status()
+        .map_err(JournalEntryError::EditorError)?;
+
+    Ok(())
+}
 
 #[allow(clippy::ptr_arg)] // the whole function is just to here for making it easier to read
 fn isjson(p: &PathBuf) -> bool {
@@ -119,6 +187,10 @@ pub enum JournalEntryError {
     DirCouldNotBeRead(fs_extra::error::Error),
     #[error("file content could not be read: {0}")]
     FileCouldNotBeRead(fs_extra::error::Error),
+    #[error("there is entry to be found")]
+    NoEntries,
+    #[error("editor returned error: {0}")]
+    EditorError(std::io::Error),
 }
 
 #[cfg(test)]
