@@ -20,33 +20,37 @@
     };
   };
 
-  outputs = { nixpkgs, crane, flake-utils, rust-overlay, ... }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ (import rust-overlay) ];
-        };
+  outputs = {
+    nixpkgs,
+    crane,
+    flake-utils,
+    rust-overlay,
+    ...
+  }:
+    flake-utils.lib.eachSystem ["x86_64-linux"] (system: let
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [(import rust-overlay)];
+      };
 
-        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-          targets = [ "x86_64-unknown-linux-musl" ];
-        };
+      rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+        targets = ["x86_64-unknown-linux-musl"];
+      };
 
-        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+      craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
-        my-crate = craneLib.buildPackage {
-          src = craneLib.cleanCargoSource (craneLib.path ./.);
-          strictDeps = true;
+      prmait = craneLib.buildPackage {
+        src = craneLib.cleanCargoSource (craneLib.path ./.);
+        strictDeps = true;
 
-          CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-          CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
-        };
-      in
-      {
-        checks = {
-          inherit my-crate;
-        };
+        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+        CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+      };
+    in {
+      checks = {
+        prmait = prmait;
+      };
 
-        packages.default = my-crate;
-      });
+      packages.default = prmait;
+    });
 }
