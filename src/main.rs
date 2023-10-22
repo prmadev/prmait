@@ -3,8 +3,8 @@ use color_eyre::eyre::Result;
 use prmait::{
     input::{Args, Configs},
     journal::{
-        edit_all_entries_handler, edit_last_entry_handler, entry::Entry, list_entries_handler,
-        new_journal_entry_handler,
+        delete_interactive_handler, edit_all_entries_handler, edit_last_entry_handler,
+        entry::Entry, list_entries_handler, new_journal_entry_handler,
     },
 };
 use std::{path::PathBuf, sync::Arc};
@@ -39,6 +39,7 @@ fn main() -> Result<()> {
                 prmait::input::JournalCommands::List => list_entries_handler(&config)?,
                 prmait::input::JournalCommands::EditLast => edit_last_entry_handler(&config)?,
                 prmait::input::JournalCommands::EditAll => edit_all_entries_handler(&config)?,
+                prmait::input::JournalCommands::DeleteI => delete_interactive_handler(&config)?,
             },
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

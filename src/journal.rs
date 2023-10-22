@@ -1,6 +1,8 @@
 use std::{path::PathBuf, process::Command, sync::Arc};
 
+use color_eyre::owo_colors::OwoColorize;
 use comfy_table::{Cell, ContentArrangement};
+use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect};
 
 use crate::input::Configs;
 
@@ -174,6 +176,79 @@ pub fn edit_all_entries_handler(config: &Configs) -> Result<(), JournalEntryErro
 
     Ok(())
 }
+pub fn delete_interactive_handler(config: &Configs) -> Result<(), JournalEntryError> {
+    let journal_path = config
+        .journal_configs
+        .clone()
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
+        .journal_path
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+
+    let s = fs_extra::dir::get_dir_content(&journal_path)
+        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+
+    let entries = s
+        .files
+        .into_iter()
+        .map(PathBuf::from)
+        .filter(isjson)
+        .map(Entry::try_from)
+        .try_fold(vec![], fold_or_err)?;
+
+    _ = entries;
+    let options: Vec<String> = entries
+        .iter()
+        .map(|ent| {
+            let mut truncated_body = ent.body.to_string();
+            truncated_body.truncate(20);
+            format!(
+                "{} -> {} ... ",
+                ToFileName::to_file_name(ent),
+                truncated_body
+            )
+        })
+        .collect();
+
+    let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("which file")
+        .items(&options)
+        .clear(true)
+        .interact()
+        .map_err(JournalEntryError::DialoguerError)?;
+
+    println!();
+    println!("{}", "This is the selected item:".bold().red());
+    let selected = entries.get(selection).unwrap();
+    println!(
+        "{}",
+        selected.at.format("%Y-%m-%d %H:%M:%S").to_string().dimmed()
+    );
+    println!("{}", selected.body.bold());
+    let tgs = match selected.tag.clone() {
+        Some(t) => t.into_iter().fold("".to_owned(), |accu, item| {
+            format!("{}#{} ", accu, item.italic())
+        }),
+        None => "".to_owned(),
+    };
+    println!("{tgs}");
+
+    println!();
+    if Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(format!(
+            "Are you {} you want to {} the above entry?",
+            "absolutely sure".bold().red(),
+            "delete".bold().red()
+        ))
+        .default(false)
+        .interact()
+        .map_err(JournalEntryError::DialoguerError)?
+    {
+        let file_path = journal_path.join(selected.to_file_name());
+        fs_extra::remove_items(&[file_path]).map_err(JournalEntryError::FileCouldNotBeDeleted)?;
+    };
+
+    Ok(())
+}
 
 #[allow(clippy::ptr_arg)] // the whole function is just to here for making it easier to read
 fn isjson(p: &PathBuf) -> bool {
@@ -206,10 +281,14 @@ pub enum JournalEntryError {
     DirCouldNotBeRead(fs_extra::error::Error),
     #[error("file content could not be read: {0}")]
     FileCouldNotBeRead(fs_extra::error::Error),
+    #[error("deleting file, failed: {0}")]
+    FileCouldNotBeDeleted(fs_extra::error::Error),
     #[error("there is entry to be found")]
     NoEntries,
     #[error("editor returned error: {0}")]
     EditorError(std::io::Error),
+    #[error("interactive tools failed: {0}")]
+    DialoguerError(dialoguer::Error),
     #[error("editor env is not set")]
     EditorEnvNotSet,
 }

@@ -40,6 +40,7 @@ pub enum JournalCommands {
     List,
     EditLast,
     EditAll,
+    DeleteI,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
