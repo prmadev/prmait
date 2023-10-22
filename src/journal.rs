@@ -1,5 +1,7 @@
 use std::{path::PathBuf, process::Command, sync::Arc};
 
+use comfy_table::{Cell, ContentArrangement};
+
 use crate::input::Configs;
 
 use self::entry::{Entry, ToFileName};
@@ -13,13 +15,22 @@ pub struct Book {
 }
 
 impl Book {
-    pub fn simple_list(&self) -> Box<[String]> {
-        let s: Box<[String]> = self
-            .enteries
-            .iter()
-            .map(|entry| format!("{}\t{}", entry.at.format("%Y-%m-%d  %H:%M:%S"), entry.body))
-            .collect();
-        s
+    pub fn table_list(&self) -> String {
+        let mut table = comfy_table::Table::new();
+        table.load_preset(comfy_table::presets::NOTHING);
+
+        table.set_content_arrangement(ContentArrangement::Dynamic);
+        self.enteries.iter().for_each(|entry| {
+            table.add_row(vec![
+                Cell::new(format!("{}", entry.at.format("%Y-%m-%d %H:%M:%S")))
+                    .bg(comfy_table::Color::White)
+                    .fg(comfy_table::Color::Black),
+                Cell::new(format!("{}", entry.body)),
+                Cell::new(entry.to_file_name()).fg(comfy_table::Color::Blue),
+            ]);
+        });
+
+        table.to_string()
     }
 }
 impl From<Vec<Entry>> for Book {
@@ -80,10 +91,7 @@ pub fn list_entries_handler(config: &Configs) -> Result<(), JournalEntryError> {
         .try_fold(vec![], fold_or_err)?;
     entries.sort();
 
-    Book::from(entries)
-        .simple_list()
-        .iter()
-        .for_each(|i| println!("{i}"));
+    println!("{}", Book::from(entries).table_list());
 
     Ok(())
 }
