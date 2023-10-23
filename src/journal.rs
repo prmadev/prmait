@@ -28,6 +28,14 @@ impl Book {
                     .fg(comfy_table::Color::Black),
                 Cell::new(format!("{}", entry.body)),
                 Cell::new(entry.to_file_name()).fg(comfy_table::Color::Blue),
+                match &entry.tag {
+                    Some(tags) => Cell::new(
+                        tags.iter()
+                            .fold("".to_string(), |accu, item| format!("{accu}, {item}")),
+                    )
+                    .fg(comfy_table::Color::Blue),
+                    None => Cell::new(""),
+                },
             ]);
         });
 
