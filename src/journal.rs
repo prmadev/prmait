@@ -4,8 +4,6 @@ use color_eyre::owo_colors::OwoColorize;
 use comfy_table::{Cell, ContentArrangement};
 use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect};
 
-use crate::input::Configs;
-
 use self::entry::{Entry, ToFileName};
 
 pub mod entry;
@@ -13,8 +11,9 @@ pub mod entry;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Book {
-    pub enteries: Arc<[entry::Entry]>,
+    pub entries: Arc<[entry::Entry]>,
 }
+const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M:%S";
 
 impl Book {
     pub fn table_list(&self) -> String {
@@ -22,9 +21,9 @@ impl Book {
         table.load_preset(comfy_table::presets::NOTHING);
 
         table.set_content_arrangement(ContentArrangement::Dynamic);
-        self.enteries.iter().for_each(|entry| {
+        self.entries.iter().for_each(|entry| {
             table.add_row(vec![
-                Cell::new(format!("{}", entry.at.format("%Y-%m-%d %H:%M:%S")))
+                Cell::new(format!("{}", entry.at.format(DATE_DISPLAY_FORMATTING)))
                     .bg(comfy_table::Color::White)
                     .fg(comfy_table::Color::Black),
                 Cell::new(format!("{}", entry.body)),
@@ -38,138 +37,86 @@ impl Book {
 impl From<Vec<Entry>> for Book {
     fn from(entries: Vec<Entry>) -> Self {
         Book {
-            enteries: entries.into(),
+            entries: entries.into(),
         }
+    }
+}
+impl TryFrom<&PathBuf> for Book {
+    type Error = Error;
+
+    fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
+        let mut entries = fs_extra::dir::get_dir_content(value)
+            .map_err(Error::DirCouldNotBeRead)?
+            .files
+            .into_iter()
+            .map(PathBuf::from)
+            .filter(is_json)
+            .map(Entry::try_from)
+            .try_fold(vec![], fold_or_err)?;
+        entries.sort();
+        Ok(Self::from(entries))
     }
 }
 
 pub fn new_journal_entry_handler(
     entry: Entry,
-    config: &Configs,
+    journal_path: &PathBuf,
     at: chrono::DateTime<chrono::Local>,
-) -> Result<(), JournalEntryError> {
-    let journal_path = config
-        .journal_configs
-        .clone()
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
-        .journal_path
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
-
-    _ = fs_extra::dir::create(&journal_path, false)
-        .map_err(JournalEntryError::JournalDirCouldNotBeCreated);
+) -> Result<(), Error> {
+    _ = fs_extra::dir::create(journal_path, false).map_err(Error::JournalDirCouldNotBeCreated);
 
     let file_path = journal_path.join(at.to_file_name());
 
     if file_path.exists() {
-        return Err(JournalEntryError::JournalEntryFileAlreadyExists);
+        return Err(Error::JournalEntryFileAlreadyExists);
     }
 
     fs_extra::file::write_all(
         file_path,
-        &serde_json::to_string_pretty(&entry)
-            .map_err(JournalEntryError::FileCouldNotSerializeEntryIntoJson)?,
+        &serde_json::to_string_pretty(&entry).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
     )
-    .map_err(JournalEntryError::FileCouldNotBeWrittenTo)?;
+    .map_err(Error::FileCouldNotBeWrittenTo)?;
 
     Ok(())
 }
-pub fn list_entries_handler(config: &Configs) -> Result<(), JournalEntryError> {
-    let journal_path = config
-        .journal_configs
-        .clone()
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
-        .journal_path
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+pub fn list_entries_handler(journal_path: &PathBuf) -> Result<(), Error> {
+    let book = Book::try_from(journal_path)?;
 
-    let s = fs_extra::dir::get_dir_content(journal_path)
-        .map_err(JournalEntryError::DirCouldNotBeRead)?;
-
-    let mut entries = s
-        .files
-        .into_iter()
-        .map(PathBuf::from)
-        .filter(isjson)
-        .map(Entry::try_from)
-        .try_fold(vec![], fold_or_err)?;
-    entries.sort();
-
-    println!("{}", Book::from(entries).table_list());
+    println!("{}", book.table_list());
 
     Ok(())
 }
-pub fn edit_last_entry_handler(config: &Configs) -> Result<(), JournalEntryError> {
-    let journal_path = config
-        .journal_configs
-        .clone()
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
-        .journal_path
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+pub fn edit_last_entry_handler(journal_path: &PathBuf) -> Result<(), Error> {
+    let book = Book::try_from(journal_path)?;
 
-    let s = fs_extra::dir::get_dir_content(&journal_path)
-        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+    let ent_path = journal_path.join(book.entries.last().ok_or(Error::NoEntries)?.to_file_name());
 
-    let mut entries = s
-        .files
-        .into_iter()
-        .map(PathBuf::from)
-        .filter(isjson)
-        .map(Entry::try_from)
-        .try_fold(vec![], fold_or_err)?;
-
-    entries.sort();
-
-    let ent_path = journal_path.join(
-        entries
-            .last()
-            .ok_or(JournalEntryError::NoEntries)?
-            .to_file_name(),
-    );
-
-    let editor = std::env::var_os("EDITOR").ok_or(JournalEntryError::EditorEnvNotSet)?;
+    let editor = std::env::var_os("EDITOR").ok_or(Error::EditorEnvNotSet)?;
     if editor.is_empty() {
-        return Err(JournalEntryError::EditorEnvNotSet);
+        return Err(Error::EditorEnvNotSet);
     }
 
     Command::new(editor)
         .arg(ent_path.clone().into_os_string())
         .status()
-        .map_err(JournalEntryError::EditorError)?;
+        .map_err(Error::EditorError)?;
 
     Ok(())
 }
-pub fn edit_specific_entry_handler(
-    config: &Configs,
-    specifier: String,
-) -> Result<(), JournalEntryError> {
-    let journal_path = config
-        .journal_configs
-        .clone()
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
-        .journal_path
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
 
-    let s = fs_extra::dir::get_dir_content(&journal_path)
-        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+pub fn edit_specific_entry_handler(journal_path: &PathBuf, specifier: String) -> Result<(), Error> {
+    let book = Book::try_from(journal_path)?;
 
-    let mut entries = s
-        .files
-        .into_iter()
-        .map(PathBuf::from)
-        .filter(isjson)
-        .map(Entry::try_from)
-        .try_fold(vec![], fold_or_err)?;
-
-    entries.sort();
-
-    let ent_path: Vec<PathBuf> = entries
+    let ent_path: Vec<PathBuf> = book
+        .entries
         .iter()
         .filter(|x| x.to_file_name().contains(&specifier))
         .map(|ent| journal_path.join(ent.to_file_name()))
         .collect();
 
-    let editor = std::env::var_os("EDITOR").ok_or(JournalEntryError::EditorEnvNotSet)?;
+    let editor = std::env::var_os("EDITOR").ok_or(Error::EditorEnvNotSet)?;
     if editor.is_empty() {
-        return Err(JournalEntryError::EditorEnvNotSet);
+        return Err(Error::EditorEnvNotSet);
     }
 
     Command::new(editor)
@@ -180,70 +127,39 @@ pub fn edit_specific_entry_handler(
                 .collect::<Vec<OsString>>(),
         )
         .status()
-        .map_err(JournalEntryError::EditorError)?;
+        .map_err(Error::EditorError)?;
 
     Ok(())
 }
 
-pub fn edit_all_entries_handler(config: &Configs) -> Result<(), JournalEntryError> {
-    let journal_path = config
-        .journal_configs
-        .clone()
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
-        .journal_path
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+pub fn edit_all_entries_handler(journal_path: &PathBuf) -> Result<(), Error> {
+    let book = Book::try_from(journal_path)?;
 
-    let s = fs_extra::dir::get_dir_content(&journal_path)
-        .map_err(JournalEntryError::DirCouldNotBeRead)?;
-
-    let mut entries = s
-        .files
-        .into_iter()
-        .map(PathBuf::from)
-        .filter(isjson)
-        .map(Entry::try_from)
-        .try_fold(vec![], fold_or_err)?;
-
-    entries.sort();
-    let es = entries
+    let es = book
+        .entries
         .iter()
         .map(ToFileName::to_file_name)
         .map(|file_name| journal_path.clone().join(file_name).into_os_string());
 
-    let editor = std::env::var_os("EDITOR").ok_or(JournalEntryError::EditorEnvNotSet)?;
+    let editor = std::env::var_os("EDITOR").ok_or(Error::EditorEnvNotSet)?;
 
     if editor.is_empty() {
-        return Err(JournalEntryError::EditorEnvNotSet);
+        return Err(Error::EditorEnvNotSet);
     }
 
     Command::new(editor)
         .args(es)
         .status()
-        .map_err(JournalEntryError::EditorError)?;
+        .map_err(Error::EditorError)?;
 
     Ok(())
 }
-pub fn delete_interactive_handler(config: &Configs) -> Result<(), JournalEntryError> {
-    let journal_path = config
-        .journal_configs
-        .clone()
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
-        .journal_path
-        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
 
-    let s = fs_extra::dir::get_dir_content(&journal_path)
-        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+pub fn delete_interactive_handler(journal_path: &PathBuf) -> Result<(), Error> {
+    let book = Book::try_from(journal_path)?;
 
-    let entries = s
-        .files
-        .into_iter()
-        .map(PathBuf::from)
-        .filter(isjson)
-        .map(Entry::try_from)
-        .try_fold(vec![], fold_or_err)?;
-
-    _ = entries;
-    let options: Vec<String> = entries
+    let options: Vec<String> = book
+        .entries
         .iter()
         .map(|ent| {
             let mut truncated_body = ent.body.to_string();
@@ -261,11 +177,11 @@ pub fn delete_interactive_handler(config: &Configs) -> Result<(), JournalEntryEr
         .items(&options)
         .clear(true)
         .interact()
-        .map_err(JournalEntryError::DialoguerError)?;
+        .map_err(Error::DialoguerError)?;
 
     println!();
     println!("{}", "This is the selected item:".bold().red());
-    let selected = entries.get(selection).unwrap();
+    let selected = book.entries.get(selection).unwrap();
     println!(
         "{}",
         selected.at.format("%Y-%m-%d %H:%M:%S").to_string().dimmed()
@@ -288,17 +204,17 @@ pub fn delete_interactive_handler(config: &Configs) -> Result<(), JournalEntryEr
         ))
         .default(false)
         .interact()
-        .map_err(JournalEntryError::DialoguerError)?
+        .map_err(Error::DialoguerError)?
     {
         let file_path = journal_path.join(selected.to_file_name());
-        fs_extra::remove_items(&[file_path]).map_err(JournalEntryError::FileCouldNotBeDeleted)?;
+        fs_extra::remove_items(&[file_path]).map_err(Error::FileCouldNotBeDeleted)?;
     };
 
     Ok(())
 }
 
 #[allow(clippy::ptr_arg)] // the whole function is just to here for making it easier to read
-fn isjson(p: &PathBuf) -> bool {
+fn is_json(p: &PathBuf) -> bool {
     match p.extension() {
         Some(x) => x == "json",
         None => false,
@@ -311,9 +227,7 @@ fn fold_or_err<T, E>(mut accu: Vec<T>, item: Result<T, E>) -> Result<Vec<T>, E> 
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum JournalEntryError {
-    #[error("The path to the journal directory is not given")]
-    JournalDirDoesNotExist,
+pub enum Error {
     #[error("could not create journal directory")]
     JournalDirCouldNotBeCreated(fs_extra::error::Error),
     #[error("could not create journal directory")]

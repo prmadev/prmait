@@ -43,6 +43,7 @@ pub enum JournalCommands {
     Edit(JournalEditCommands),
     DeleteI,
 }
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
 pub enum JournalEditCommands {
@@ -78,4 +79,21 @@ pub enum ConfigErr {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JournalConfigs {
     pub journal_path: Option<PathBuf>,
+}
+
+impl Configs {
+    pub fn journal_path(&self) -> Result<PathBuf, Error> {
+        self.journal_configs
+            .clone()
+            .ok_or(Error::JournalDirDoesNotExist)?
+            .journal_path
+            .ok_or(Error::JournalDirDoesNotExist)
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, thiserror::Error)]
+pub enum Error {
+    #[error("The path to the journal directory is not given")]
+    JournalDirDoesNotExist,
 }

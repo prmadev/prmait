@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use chrono::{DateTime, Local};
 
-use super::JournalEntryError;
+use super::Error;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -45,14 +45,13 @@ mod testing {
 }
 
 impl TryFrom<PathBuf> for Entry {
-    type Error = JournalEntryError;
+    type Error = Error;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        let content =
-            fs_extra::file::read_to_string(value).map_err(JournalEntryError::FileCouldNotBeRead)?;
+        let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let entry: Entry = serde_json::from_str(&content)
-            .map_err(JournalEntryError::FileCouldNotDeserializeEntryFromJson)?;
+        let entry: Entry =
+            serde_json::from_str(&content).map_err(Error::FileCouldNotDeserializeEntryFromJson)?;
         Ok(entry)
     }
 }

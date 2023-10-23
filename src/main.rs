@@ -33,18 +33,26 @@ fn main() -> Result<()> {
                         body: Arc::new(entry),
                         tag,
                     },
-                    &config,
+                    &config.journal_path()?,
                     chrono::Local::now(),
                 )?,
-                prmait::input::JournalCommands::List => list_entries_handler(&config)?,
+                prmait::input::JournalCommands::List => {
+                    list_entries_handler(&config.journal_path()?)?
+                }
                 prmait::input::JournalCommands::Edit(edit_type) => match edit_type {
-                    prmait::input::JournalEditCommands::Last => edit_last_entry_handler(&config)?,
-                    prmait::input::JournalEditCommands::All => edit_all_entries_handler(&config)?,
+                    prmait::input::JournalEditCommands::Last => {
+                        edit_last_entry_handler(&config.journal_path()?)?
+                    }
+                    prmait::input::JournalEditCommands::All => {
+                        edit_all_entries_handler(&config.journal_path()?)?
+                    }
                     prmait::input::JournalEditCommands::One { item } => {
-                        edit_specific_entry_handler(&config, item)?
+                        edit_specific_entry_handler(&config.journal_path()?, item)?
                     }
                 },
-                prmait::input::JournalCommands::DeleteI => delete_interactive_handler(&config)?,
+                prmait::input::JournalCommands::DeleteI => {
+                    delete_interactive_handler(&config.journal_path()?)?
+                }
             },
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),
