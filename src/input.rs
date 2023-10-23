@@ -38,9 +38,17 @@ pub enum JournalCommands {
     },
     /// List of entries
     List,
-    EditLast,
-    EditAll,
+    /// edit commands
+    #[command(subcommand)]
+    Edit(JournalEditCommands),
     DeleteI,
+}
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
+pub enum JournalEditCommands {
+    Last,
+    All,
+    One { item: String },
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

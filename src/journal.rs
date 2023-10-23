@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command, sync::Arc};
+use std::{ffi::OsString, path::PathBuf, process::Command, sync::Arc};
 
 use color_eyre::owo_colors::OwoColorize;
 use comfy_table::{Cell, ContentArrangement};
@@ -132,6 +132,53 @@ pub fn edit_last_entry_handler(config: &Configs) -> Result<(), JournalEntryError
 
     Command::new(editor)
         .arg(ent_path.clone().into_os_string())
+        .status()
+        .map_err(JournalEntryError::EditorError)?;
+
+    Ok(())
+}
+pub fn edit_specific_entry_handler(
+    config: &Configs,
+    specifier: String,
+) -> Result<(), JournalEntryError> {
+    let journal_path = config
+        .journal_configs
+        .clone()
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?
+        .journal_path
+        .ok_or(JournalEntryError::JournalDirDoesNotExist)?;
+
+    let s = fs_extra::dir::get_dir_content(&journal_path)
+        .map_err(JournalEntryError::DirCouldNotBeRead)?;
+
+    let mut entries = s
+        .files
+        .into_iter()
+        .map(PathBuf::from)
+        .filter(isjson)
+        .map(Entry::try_from)
+        .try_fold(vec![], fold_or_err)?;
+
+    entries.sort();
+
+    let ent_path: Vec<PathBuf> = entries
+        .iter()
+        .filter(|x| x.to_file_name().contains(&specifier))
+        .map(|ent| journal_path.join(ent.to_file_name()))
+        .collect();
+
+    let editor = std::env::var_os("EDITOR").ok_or(JournalEntryError::EditorEnvNotSet)?;
+    if editor.is_empty() {
+        return Err(JournalEntryError::EditorEnvNotSet);
+    }
+
+    Command::new(editor)
+        .args(
+            ent_path
+                .iter()
+                .map(|ent| ent.clone().into_os_string())
+                .collect::<Vec<OsString>>(),
+        )
         .status()
         .map_err(JournalEntryError::EditorError)?;
 

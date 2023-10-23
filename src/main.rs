@@ -4,7 +4,7 @@ use prmait::{
     input::{Args, Configs},
     journal::{
         delete_interactive_handler, edit_all_entries_handler, edit_last_entry_handler,
-        entry::Entry, list_entries_handler, new_journal_entry_handler,
+        edit_specific_entry_handler, entry::Entry, list_entries_handler, new_journal_entry_handler,
     },
 };
 use std::{path::PathBuf, sync::Arc};
@@ -37,8 +37,13 @@ fn main() -> Result<()> {
                     chrono::Local::now(),
                 )?,
                 prmait::input::JournalCommands::List => list_entries_handler(&config)?,
-                prmait::input::JournalCommands::EditLast => edit_last_entry_handler(&config)?,
-                prmait::input::JournalCommands::EditAll => edit_all_entries_handler(&config)?,
+                prmait::input::JournalCommands::Edit(edit_type) => match edit_type {
+                    prmait::input::JournalEditCommands::Last => edit_last_entry_handler(&config)?,
+                    prmait::input::JournalEditCommands::All => edit_all_entries_handler(&config)?,
+                    prmait::input::JournalEditCommands::One { item } => {
+                        edit_specific_entry_handler(&config, item)?
+                    }
+                },
                 prmait::input::JournalCommands::DeleteI => delete_interactive_handler(&config)?,
             },
         },
