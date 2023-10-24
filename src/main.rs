@@ -1,6 +1,7 @@
 use chrono::TimeZone;
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
+use prmait::git;
 use prmait::tasks::new_task_handler;
 use prmait::{
     input::{Args, Configs},
@@ -96,6 +97,13 @@ fn main() -> Result<()> {
                         }
                         None => None,
                     };
+
+                    let cwd = std::env::current_dir()?;
+                    let project_name = git::get_git_root(cwd).map(git::directory_name_from_path);
+                    let mut projects = projects.unwrap_or(vec![]);
+                    if let Some(p) = project_name {
+                        projects.push(p?);
+                    }
                     let t = Task {
                         id: now.timestamp(),
                         time_created: now,
@@ -104,7 +112,7 @@ fn main() -> Result<()> {
                         description,
                         area,
                         people: people.unwrap_or(vec![]),
-                        projects: projects.unwrap_or(vec![]),
+                        projects,
                         deadline,
                         best_starting_time,
                     };

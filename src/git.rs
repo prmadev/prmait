@@ -21,6 +21,7 @@ pub fn directory_name_from_path(p: PathBuf) -> Result<String, Error> {
         .ok_or(Error::DirectoryNameIsNotValidUTF8)?;
     Ok(project_name.to_owned())
 }
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("could not get current working directory {0}")]
