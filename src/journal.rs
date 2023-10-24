@@ -42,6 +42,7 @@ impl Book {
         table.to_string()
     }
 }
+
 impl From<Vec<Entry>> for Book {
     fn from(entries: Vec<Entry>) -> Self {
         Book {
@@ -66,7 +67,7 @@ impl TryFrom<&PathBuf> for Book {
     }
 }
 
-pub fn new_journal_entry_handler(
+pub fn new_entry_handler(
     entry: Entry,
     journal_path: &PathBuf,
     at: chrono::DateTime<chrono::Local>,
@@ -94,25 +95,23 @@ pub fn list_entries_handler(journal_path: &PathBuf) -> Result<(), Error> {
 
     Ok(())
 }
-pub fn edit_last_entry_handler(journal_path: &PathBuf) -> Result<(), Error> {
+pub fn edit_last_entry_handler(journal_path: &PathBuf, editor: OsString) -> Result<(), Error> {
     let book = Book::try_from(journal_path)?;
 
-    let ent_path = journal_path.join(book.entries.last().ok_or(Error::NoEntries)?.to_file_name());
+    let ent_path = journal_path
+        .join(book.entries.last().ok_or(Error::NoEntries)?.to_file_name())
+        .into_os_string();
 
-    let editor = std::env::var_os("EDITOR").ok_or(Error::EditorEnvNotSet)?;
-    if editor.is_empty() {
-        return Err(Error::EditorEnvNotSet);
-    }
-
-    Command::new(editor)
-        .arg(ent_path.clone().into_os_string())
-        .status()
-        .map_err(Error::EditorError)?;
+    edit_with_editor(editor, vec![ent_path])?;
 
     Ok(())
 }
 
-pub fn edit_specific_entry_handler(journal_path: &PathBuf, specifier: String) -> Result<(), Error> {
+pub fn edit_specific_entry_handler(
+    journal_path: &PathBuf,
+    specifier: String,
+    editor: OsString,
+) -> Result<(), Error> {
     let book = Book::try_from(journal_path)?;
 
     let ent_path: Vec<PathBuf> = book
@@ -122,48 +121,43 @@ pub fn edit_specific_entry_handler(journal_path: &PathBuf, specifier: String) ->
         .map(|ent| journal_path.join(ent.to_file_name()))
         .collect();
 
-    let editor = std::env::var_os("EDITOR").ok_or(Error::EditorEnvNotSet)?;
-    if editor.is_empty() {
-        return Err(Error::EditorEnvNotSet);
-    }
-
-    Command::new(editor)
-        .args(
-            ent_path
-                .iter()
-                .map(|ent| ent.clone().into_os_string())
-                .collect::<Vec<OsString>>(),
-        )
-        .status()
-        .map_err(Error::EditorError)?;
+    edit_with_editor(
+        editor,
+        ent_path
+            .iter()
+            .map(|ent| ent.clone().into_os_string())
+            .collect::<Vec<OsString>>(),
+    )?;
 
     Ok(())
 }
+fn edit_with_editor(editor: OsString, files_complete_paths: Vec<OsString>) -> Result<(), Error> {
+    Command::new(editor)
+        .args(files_complete_paths)
+        .status()
+        .map_err(Error::EditorError)?;
+    Ok(())
+}
 
-pub fn edit_all_entries_handler(journal_path: &PathBuf) -> Result<(), Error> {
+pub fn edit_all_entries_handler(journal_path: &PathBuf, editor: OsString) -> Result<(), Error> {
     let book = Book::try_from(journal_path)?;
 
     let es = book
         .entries
         .iter()
         .map(ToFileName::to_file_name)
-        .map(|file_name| journal_path.clone().join(file_name).into_os_string());
+        .map(|file_name| journal_path.clone().join(file_name).into_os_string())
+        .collect();
 
-    let editor = std::env::var_os("EDITOR").ok_or(Error::EditorEnvNotSet)?;
-
-    if editor.is_empty() {
-        return Err(Error::EditorEnvNotSet);
-    }
-
-    Command::new(editor)
-        .args(es)
-        .status()
-        .map_err(Error::EditorError)?;
+    edit_with_editor(editor, es)?;
 
     Ok(())
 }
 
-pub fn delete_interactive_handler(journal_path: &PathBuf) -> Result<(), Error> {
+pub fn delete_interactive_handler(
+    journal_path: &PathBuf,
+    truncatation_amount: usize,
+) -> Result<(), Error> {
     let book = Book::try_from(journal_path)?;
 
     let options: Vec<String> = book
@@ -171,7 +165,7 @@ pub fn delete_interactive_handler(journal_path: &PathBuf) -> Result<(), Error> {
         .iter()
         .map(|ent| {
             let mut truncated_body = ent.body.to_string();
-            truncated_body.truncate(20);
+            truncated_body.truncate(truncatation_amount);
             format!(
                 "{} -> {} ... ",
                 ToFileName::to_file_name(ent),
@@ -183,27 +177,18 @@ pub fn delete_interactive_handler(journal_path: &PathBuf) -> Result<(), Error> {
     let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("which file")
         .items(&options)
-        .clear(true)
         .interact()
         .map_err(Error::DialoguerError)?;
 
-    println!();
-    println!("{}", "This is the selected item:".bold().red());
-    let selected = book.entries.get(selection).unwrap();
-    println!(
-        "{}",
-        selected.at.format("%Y-%m-%d %H:%M:%S").to_string().dimmed()
-    );
-    println!("{}", selected.body.bold());
-    let tgs = match selected.tag.clone() {
-        Some(t) => t.into_iter().fold("".to_owned(), |accu, item| {
-            format!("{}#{} ", accu, item.italic())
-        }),
-        None => "".to_owned(),
-    };
-    println!("{tgs}");
+    println!("\n{}", "This is the selected item:".bold().red());
 
-    println!();
+    let selected = book
+        .entries
+        .get(selection)
+        .ok_or(Error::EntryCouldNotBeFound)?;
+
+    println!("{selected}\n");
+
     if Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(format!(
             "Are you {} you want to {} the above entry?",
@@ -258,8 +243,8 @@ pub enum Error {
     EditorError(std::io::Error),
     #[error("interactive tools failed: {0}")]
     DialoguerError(dialoguer::Error),
-    #[error("editor env is not set")]
-    EditorEnvNotSet,
+    #[error("entry could not be found")]
+    EntryCouldNotBeFound,
 }
 
 #[cfg(test)]

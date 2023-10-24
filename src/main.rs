@@ -1,13 +1,15 @@
+use chrono::TimeZone;
 use clap::Parser;
-use color_eyre::eyre::Result;
+use color_eyre::{eyre::Result, Report};
 use prmait::{
     input::{Args, Configs},
     journal::{
         delete_interactive_handler, edit_all_entries_handler, edit_last_entry_handler,
-        edit_specific_entry_handler, entry::Entry, list_entries_handler, new_journal_entry_handler,
+        edit_specific_entry_handler, entry::Entry, list_entries_handler, new_entry_handler,
     },
+    tasks::{Task, TaskState},
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
 
@@ -27,7 +29,7 @@ fn main() -> Result<()> {
     match args.command {
         Some(general_command) => match general_command {
             prmait::input::Commands::Journal { journal_command } => match journal_command {
-                prmait::input::JournalCommands::New { entry, tag } => new_journal_entry_handler(
+                prmait::input::JournalCommands::New { entry, tag } => new_entry_handler(
                     Entry {
                         at: chrono::Local::now(),
                         body: Arc::new(entry),
@@ -40,18 +42,71 @@ fn main() -> Result<()> {
                     list_entries_handler(&config.journal_path()?)?
                 }
                 prmait::input::JournalCommands::Edit(edit_type) => match edit_type {
-                    prmait::input::JournalEditCommands::Last => {
-                        edit_last_entry_handler(&config.journal_path()?)?
-                    }
-                    prmait::input::JournalEditCommands::All => {
-                        edit_all_entries_handler(&config.journal_path()?)?
-                    }
+                    prmait::input::JournalEditCommands::Last => edit_last_entry_handler(
+                        &config.journal_path()?,
+                        editor(std::env::var_os("EDITOR"))?,
+                    )?,
+                    prmait::input::JournalEditCommands::All => edit_all_entries_handler(
+                        &config.journal_path()?,
+                        editor(std::env::var_os("EDITOR"))?,
+                    )?,
                     prmait::input::JournalEditCommands::One { item } => {
-                        edit_specific_entry_handler(&config.journal_path()?, item)?
+                        edit_specific_entry_handler(
+                            &config.journal_path()?,
+                            item,
+                            editor(std::env::var_os("EDITOR"))?,
+                        )?
                     }
                 },
-                prmait::input::JournalCommands::DeleteI => {
-                    delete_interactive_handler(&config.journal_path()?)?
+                prmait::input::JournalCommands::Delete => {
+                    delete_interactive_handler(&config.journal_path()?, 20)?
+                }
+            },
+            prmait::input::Commands::Task { task_command } => match task_command {
+                prmait::input::TaskCommands::New {
+                    title,
+                    description,
+                    area,
+                    people,
+                    deadline,
+                    best_starting_time,
+                    projects,
+                } => {
+                    let now = chrono::Local::now();
+                    let deadline = match deadline {
+                        Some(s) => {
+                            let nt = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d")?;
+                            let lo = chrono::Local
+                                .from_local_datetime(&nt)
+                                .single()
+                                .ok_or(Report::msg("invalid deadline format"))?;
+                            Some(lo)
+                        }
+                        None => None,
+                    };
+                    let best_starting_time = match best_starting_time {
+                        Some(s) => {
+                            let nt = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d")?;
+                            let lo = chrono::Local
+                                .from_local_datetime(&nt)
+                                .single()
+                                .ok_or(Report::msg("invalid best-starting-time format"))?;
+                            Some(lo)
+                        }
+                        None => None,
+                    };
+                    let t = Task {
+                        id: now.timestamp(),
+                        time_created: now,
+                        state_log: Arc::new([TaskState::ToDo(now)]),
+                        title,
+                        description,
+                        area,
+                        people: people.unwrap_or(vec![]),
+                        projects: projects.unwrap_or(vec![]),
+                        deadline,
+                        best_starting_time,
+                    };
                 }
             },
         },
@@ -59,4 +114,12 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn editor(extractor: Option<OsString>) -> Result<OsString> {
+    let editor = extractor.ok_or(color_eyre::Report::msg("editor variable is not specified"))?;
+    if editor.is_empty() {
+        return Err(color_eyre::Report::msg("editor variable is not specified"));
+    };
+    Ok(editor)
 }

@@ -1,6 +1,7 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{fmt::Display, path::PathBuf, sync::Arc};
 
 use chrono::{DateTime, Local};
+use color_eyre::owo_colors::OwoColorize;
 
 use super::Error;
 
@@ -63,5 +64,26 @@ pub trait ToFileName {
 impl ToFileName for DateTime<Local> {
     fn to_file_name(&self) -> String {
         self.format(FILE_NAME_FORMAT).to_string()
+    }
+}
+impl Display for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let date = format!(
+            "{}",
+            self.at
+                .format(super::DATE_DISPLAY_FORMATTING)
+                .to_string()
+                .dimmed()
+        );
+
+        let body = format!("{}", self.body.bold());
+
+        let tags = match self.tag.clone() {
+            Some(t) => t.into_iter().fold("".to_owned(), |accu, item| {
+                format!("{}#{} ", accu, item.italic())
+            }),
+            None => "".to_owned(),
+        };
+        write!(f, "{date}\n{body}\n{tags}")
     }
 }

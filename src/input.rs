@@ -6,6 +6,8 @@ use figment::{
     Figment,
 };
 
+use crate::tasks::Area;
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Parser)]
 #[command(version,about, long_about = None, arg_required_else_help = true)]
@@ -27,6 +29,11 @@ pub enum Commands {
         #[command(subcommand)]
         journal_command: JournalCommands,
     },
+    Task {
+        /// task commands
+        #[command(subcommand)]
+        task_command: TaskCommands,
+    },
 }
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
@@ -41,7 +48,35 @@ pub enum JournalCommands {
     /// edit commands
     #[command(subcommand)]
     Edit(JournalEditCommands),
-    DeleteI,
+    Delete,
+}
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
+pub enum TaskCommands {
+    /// New Entry
+    New {
+        /// The main title of Task [REQUIRED]
+        #[arg(short = 't', long)]
+        title: String,
+        /// The details of the Task [OPTIONAL]
+        #[arg(short = 'd', long)]
+        description: Option<String>,
+        /// Area that the task falls onto [OPTIONAL]
+        #[arg(short = 'a', long)]
+        area: Option<Area>,
+        /// Names of the people related to the task [OPTIONAL]
+        #[arg(short = 'p', long)]
+        people: Option<Vec<String>>,
+        /// Projects this task belongs to [OPTIONAL]
+        #[arg(short = 'p', long)]
+        projects: Option<Vec<String>>,
+        /// Deadline of the the task in this format "%Y-%m-%d" or "2023-10-24" [OPTIONAL]
+        #[arg(short = 'D', long)]
+        deadline: Option<String>,
+        /// Ideal starting time for the task in this format "%Y-%m-%d" or "2023-10-24" [OPTIONAL]
+        #[arg(short = 'S', long)]
+        best_starting_time: Option<String>,
+    },
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -55,7 +90,8 @@ pub enum JournalEditCommands {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Configs {
-    pub journal_configs: Option<JournalConfigs>,
+    pub journal: Option<JournalConfigs>,
+    pub task: Option<TaskConfigs>,
 }
 
 impl TryFrom<PathBuf> for Configs {
@@ -78,22 +114,34 @@ pub enum ConfigErr {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JournalConfigs {
-    pub journal_path: Option<PathBuf>,
+    pub path: Option<PathBuf>,
+}
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TaskConfigs {
+    pub path: Option<PathBuf>,
 }
 
 impl Configs {
     pub fn journal_path(&self) -> Result<PathBuf, Error> {
-        self.journal_configs
+        self.journal
             .clone()
-            .ok_or(Error::JournalDirDoesNotExist)?
-            .journal_path
-            .ok_or(Error::JournalDirDoesNotExist)
+            .ok_or(Error::DirDoesNotExist)?
+            .path
+            .ok_or(Error::DirDoesNotExist)
+    }
+    pub fn task_path(&self) -> Result<PathBuf, Error> {
+        self.task
+            .clone()
+            .ok_or(Error::DirDoesNotExist)?
+            .path
+            .ok_or(Error::DirDoesNotExist)
     }
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, thiserror::Error)]
 pub enum Error {
-    #[error("The path to the journal directory is not given")]
-    JournalDirDoesNotExist,
+    #[error("The path to the directory is not given")]
+    DirDoesNotExist,
 }
