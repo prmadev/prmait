@@ -1,7 +1,15 @@
 use std::path::PathBuf;
 
+use gix_discover::repository;
+
 pub fn get_git_root(p: PathBuf) -> Option<PathBuf> {
-    if p.join(".git").is_dir() {
+    if gix_discover::is_git(&p).is_ok_and(|x| match x {
+        repository::Kind::Bare => true,
+        repository::Kind::WorkTree { linked_git_dir: _ } => true,
+        repository::Kind::WorkTreeGitDir { work_dir: _ } => true,
+        repository::Kind::Submodule { git_dir: _ } => false,
+        repository::Kind::SubmoduleGitDir => false,
+    }) {
         Some(p)
     } else {
         let mut p_par = p;
@@ -33,3 +41,5 @@ pub enum Error {
     #[error("directory name is not a valid utf-8")]
     DirectoryNameIsNotValidUTF8,
 }
+
+fn find_git() {}
