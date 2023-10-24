@@ -1,8 +1,7 @@
-use std::{env::current_dir, str::FromStr, sync::Arc};
+use std::path::PathBuf;
+use std::{str::FromStr, sync::Arc};
 
 use chrono::{DateTime, Local};
-
-use crate::git::get_git_root;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -39,7 +38,7 @@ impl ToFileName for Task {
 
 impl Default for Task {
     fn default() -> Self {
-        let now = chrono::Local::now();
+        let now = Local::now();
         Self {
             id: now.timestamp(),
             state_log: Arc::new([TaskState::default()]),
@@ -66,7 +65,7 @@ pub enum TaskState {
 
 impl Default for TaskState {
     fn default() -> Self {
-        Self::ToDo(chrono::Local::now())
+        Self::ToDo(Local::now())
     }
 }
 
@@ -81,6 +80,8 @@ pub enum Area {
 impl FromStr for Area {
     type Err = AreaParsingError;
 
+    //noinspection SpellCheckingInspection
+    //noinspection SpellCheckingInspection
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "work" | "w" | "wo" | "wor" => Ok(Self::Work),
@@ -99,10 +100,32 @@ pub enum AreaParsingError {
     AreaIsNotAMatch,
 }
 
-fn new_task_handler(t: Task) -> Result<(), Error> {
-    todo!()
+pub fn new_task_handler(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
+    _ = fs_extra::dir::create(task_dir, false).map_err(Error::DirCouldNotBeCreated);
+
+    let file_path = task_dir.join(t.to_file_name());
+
+    if file_path.exists() {
+        return Err(Error::TaskFileAlreadyExists);
+    }
+
+    fs_extra::file::write_all(
+        file_path,
+        &serde_json::to_string_pretty(&t).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
+    )
+    .map_err(Error::FileCouldNotBeWrittenTo)?;
+
+    Ok(())
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, thiserror::Error)]
-pub enum Error {}
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("directory could not be created")]
+    DirCouldNotBeCreated(fs_extra::error::Error),
+    #[error("task with that name already exist")]
+    TaskFileAlreadyExists,
+    #[error("file could not be serialized")]
+    FileCouldNotSerializeEntryIntoJson(serde_json::Error),
+    #[error("file could not written to")]
+    FileCouldNotBeWrittenTo(fs_extra::error::Error),
+}

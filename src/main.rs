@@ -1,6 +1,7 @@
 use chrono::TimeZone;
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
+use prmait::tasks::new_task_handler;
 use prmait::{
     input::{Args, Configs},
     journal::{
@@ -107,6 +108,7 @@ fn main() -> Result<()> {
                         deadline,
                         best_starting_time,
                     };
+                    new_task_handler(&config.task_path()?, t)?;
                 }
             },
         },
@@ -117,9 +119,9 @@ fn main() -> Result<()> {
 }
 
 fn editor(extractor: Option<OsString>) -> Result<OsString> {
-    let editor = extractor.ok_or(color_eyre::Report::msg("editor variable is not specified"))?;
+    let editor = extractor.ok_or(Report::msg("editor variable is not specified"))?;
     if editor.is_empty() {
-        return Err(color_eyre::Report::msg("editor variable is not specified"));
+        return Err(Report::msg("editor variable is not specified"));
     };
     Ok(editor)
 }

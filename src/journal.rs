@@ -1,9 +1,7 @@
 use std::{ffi::OsString, path::PathBuf, process::Command, sync::Arc};
-
 use color_eyre::owo_colors::OwoColorize;
 use comfy_table::{Cell, ContentArrangement};
 use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect};
-
 use self::entry::{Entry, ToFileName};
 
 pub mod entry;
@@ -11,7 +9,7 @@ pub mod entry;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Book {
-    pub entries: Arc<[entry::Entry]>,
+    pub entries: Arc<[Entry]>,
 }
 const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M:%S";
 
@@ -156,7 +154,7 @@ pub fn edit_all_entries_handler(journal_path: &PathBuf, editor: OsString) -> Res
 
 pub fn delete_interactive_handler(
     journal_path: &PathBuf,
-    truncatation_amount: usize,
+    truncation_amount: usize,
 ) -> Result<(), Error> {
     let book = Book::try_from(journal_path)?;
 
@@ -165,7 +163,7 @@ pub fn delete_interactive_handler(
         .iter()
         .map(|ent| {
             let mut truncated_body = ent.body.to_string();
-            truncated_body.truncate(truncatation_amount);
+            truncated_body.truncate(truncation_amount);
             format!(
                 "{} -> {} ... ",
                 ToFileName::to_file_name(ent),
