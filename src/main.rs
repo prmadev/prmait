@@ -52,7 +52,7 @@ fn main() -> Result<()> {
                         &config.journal_path()?,
                         editor(std::env::var_os("EDITOR"))?,
                     )?,
-                    prmait::input::JournalEditCommands::One { item } => {
+                    prmait::input::JournalEditCommands::Specific { item } => {
                         edit_specific_entry_handler(
                             &config.journal_path()?,
                             item,
