@@ -1,4 +1,4 @@
-use chrono::TimeZone;
+use chrono::{Local, TimeZone};
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
 use prmait::git;
@@ -33,12 +33,12 @@ fn main() -> Result<()> {
             prmait::input::Commands::Journal { journal_command } => match journal_command {
                 prmait::input::JournalCommands::New { entry, tag } => new_entry_handler(
                     Entry {
-                        at: chrono::Local::now(),
+                        at: Local::now(),
                         body: Arc::new(entry),
                         tag,
                     },
                     &config.journal_path()?,
-                    chrono::Local::now(),
+                    Local::now(),
                 )?,
                 prmait::input::JournalCommands::List => {
                     list_entries_handler(&config.journal_path()?)?
@@ -64,6 +64,7 @@ fn main() -> Result<()> {
                     delete_interactive_handler(&config.journal_path()?, 20)?
                 }
             },
+
             prmait::input::Commands::Task { task_command } => match task_command {
                 prmait::input::TaskCommands::New {
                     title,
@@ -74,11 +75,13 @@ fn main() -> Result<()> {
                     best_starting_time,
                     projects,
                 } => {
-                    let now = chrono::Local::now();
+                    let now = Local::now();
                     let deadline = match deadline {
                         Some(s) => {
-                            let nt = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d")?;
-                            let lo = chrono::Local
+                            let nt = chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")?
+                                .and_hms_opt(0, 0, 0)
+                                .ok_or(Report::msg("could not form date time for deadline time"))?;
+                            let lo = Local
                                 .from_local_datetime(&nt)
                                 .single()
                                 .ok_or(Report::msg("invalid deadline format"))?;
@@ -88,8 +91,12 @@ fn main() -> Result<()> {
                     };
                     let best_starting_time = match best_starting_time {
                         Some(s) => {
-                            let nt = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d")?;
-                            let lo = chrono::Local
+                            let nt = chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")?
+                                .and_hms_opt(0, 0, 0)
+                                .ok_or(Report::msg(
+                                    "could not form date time for best starting time",
+                                ))?;
+                            let lo = Local
                                 .from_local_datetime(&nt)
                                 .single()
                                 .ok_or(Report::msg("invalid best-starting-time format"))?;
@@ -101,8 +108,8 @@ fn main() -> Result<()> {
                     let cwd = std::env::current_dir()?;
                     let project_name = git::get_git_root(cwd).map(git::directory_name_from_path);
                     let mut projects = projects.unwrap_or(vec![]);
-                    if let Some(p) = project_name {
-                        projects.push(p?);
+                    if let Ok(Ok(p)) = project_name {
+                        projects.push(p);
                     }
                     let t = Task {
                         id: now.timestamp(),

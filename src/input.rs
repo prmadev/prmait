@@ -65,7 +65,7 @@ pub enum TaskCommands {
         #[arg(short = 'a', long)]
         area: Option<Area>,
         /// Names of the people related to the task [OPTIONAL]
-        #[arg(short = 'p', long)]
+        #[arg(short = 'P', long)]
         people: Option<Vec<String>>,
         /// Projects this task belongs to [OPTIONAL]
         #[arg(short = 'p', long)]
