@@ -106,7 +106,7 @@ fn main() -> Result<()> {
                     };
 
                     let cwd = std::env::current_dir()?;
-                    let project_name = git::get_git_root(cwd).map(git::directory_name_from_path);
+                    let project_name = git::git_root(cwd).map(git::git_directory_name);
                     let mut projects = projects.unwrap_or(vec![]);
                     if let Ok(Ok(p)) = project_name {
                         projects.push(p);

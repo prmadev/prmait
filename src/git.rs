@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-pub fn get_git_root(p: PathBuf) -> Result<PathBuf, Error> {
+pub fn git_root(p: PathBuf) -> Result<PathBuf, Error> {
     let (repo_path, _): (_, _) = gix_discover::upwards(&p).map_err(Error::CouldNotGetGitRoot)?;
     repo_path
         .into_repository_and_work_tree_directories()
@@ -9,8 +9,8 @@ pub fn get_git_root(p: PathBuf) -> Result<PathBuf, Error> {
         .map(PathBuf::from)
 }
 
-pub fn directory_name_from_path(p: PathBuf) -> Result<String, Error> {
-    let git_root = get_git_root(p)?;
+pub fn git_directory_name(p: PathBuf) -> Result<String, Error> {
+    let git_root = git_root(p)?;
     let project_name = git_root
         .file_name()
         .ok_or(Error::CouldNotGetGitRootName)?
