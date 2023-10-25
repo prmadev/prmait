@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 pub fn get_git_root(p: PathBuf) -> Result<PathBuf, Error> {
     let (repo_path, _): (_, _) = gix_discover::upwards(&p).map_err(Error::CouldNotGetGitRoot)?;
     repo_path
