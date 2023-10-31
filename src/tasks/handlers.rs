@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
 
 use crate::files::ToFileName;
+use crate::time::TimeRange;
 
 use super::{
     task::{Task, TaskState},
@@ -29,11 +29,6 @@ pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
     Ok(())
 }
 
-#[derive(Debug, Clone)]
-pub struct TimeRange {
-    pub from: Option<DateTime<Local>>,
-    pub to: Option<DateTime<Local>>,
-}
 pub fn todays_task(
     task_dir: &PathBuf,
     time_range: TimeRange,
@@ -51,13 +46,7 @@ pub fn todays_task(
         })
         .filter(|t| {
             if let Some(bst) = t.best_starting_time {
-                if time_range.from.is_some_and(|fr| fr > bst) {
-                    return false;
-                }
-                if time_range.to.is_some_and(|to| to < bst) {
-                    return false;
-                }
-                true
+                time_range.intersects_with(bst)
             } else {
                 false
             }
@@ -75,13 +64,7 @@ pub fn todays_task(
         .iter()
         .filter(|t| {
             if let Some(deadlined) = t.deadline {
-                if time_range.from.is_some_and(|fr| fr > deadlined) {
-                    return false;
-                }
-                if time_range.to.is_some_and(|to| to < deadlined) {
-                    return false;
-                }
-                true
+                time_range.intersects_with(deadlined)
             } else {
                 false
             }

@@ -58,7 +58,7 @@ impl Display for Entry {
         let date = format!(
             "{}",
             self.at
-                .format(super::DATE_DISPLAY_FORMATTING)
+                .format(crate::time::DATE_DISPLAY_FORMATTING)
                 .to_string()
                 .dimmed()
         );

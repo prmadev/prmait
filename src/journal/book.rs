@@ -1,7 +1,7 @@
 use crate::files::is_json;
 use crate::fold_or_err;
 use crate::journal::entry::{Entry, ToFileName};
-use crate::journal::{Error, DATE_DISPLAY_FORMATTING};
+use crate::journal::Error;
 use comfy_table::{Cell, ContentArrangement};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -19,9 +19,12 @@ impl Book {
         table.set_content_arrangement(ContentArrangement::Dynamic);
         self.entries.iter().for_each(|entry| {
             table.add_row(vec![
-                Cell::new(format!("{}", entry.at.format(DATE_DISPLAY_FORMATTING)))
-                    .bg(comfy_table::Color::White)
-                    .fg(comfy_table::Color::Black),
+                Cell::new(format!(
+                    "{}",
+                    entry.at.format(crate::time::DATE_DISPLAY_FORMATTING)
+                ))
+                .bg(comfy_table::Color::White)
+                .fg(comfy_table::Color::Black),
                 Cell::new(format!("{}", entry.body)),
                 Cell::new(entry.to_file_name()).fg(comfy_table::Color::Blue),
                 match &entry.tag {

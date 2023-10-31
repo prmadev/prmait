@@ -4,6 +4,7 @@ use color_eyre::{eyre::Result, Report};
 use prmait::input::{Args, Configs};
 use prmait::tasks::handlers::todays_task;
 use prmait::tasks::task::{Task, TaskState};
+use prmait::time::TimeRange;
 use prmait::{git, journal, tasks};
 use std::result;
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
@@ -137,7 +138,7 @@ fn main() -> Result<()> {
                         let current_day_end = current_day_start
                             .checked_add_days(Days::new(1))
                             .ok_or(Report::msg("could not get current day's end"))?;
-                        let time_range = tasks::handlers::TimeRange {
+                        let time_range = TimeRange {
                             from: Some(current_day_start),
                             to: Some(current_day_end),
                         };
