@@ -1,16 +1,11 @@
-use chrono::{Local, TimeZone};
+use chrono::{Datelike, Days, Local, TimeZone};
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
-use prmait::git;
-use prmait::tasks::new_task_handler;
-use prmait::{
-    input::{Args, Configs},
-    journal::{
-        delete_interactive_handler, edit_all_entries_handler, edit_last_entry_handler,
-        edit_specific_entry_handler, entry::Entry, list_entries_handler, new_entry_handler,
-    },
-    tasks::{Task, TaskState},
-};
+use prmait::input::{Args, Configs};
+use prmait::tasks::handlers::todays_task;
+use prmait::tasks::task::{Task, TaskState};
+use prmait::{git, journal, tasks};
+use std::result;
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
@@ -31,8 +26,8 @@ fn main() -> Result<()> {
     match args.command {
         Some(general_command) => match general_command {
             prmait::input::Commands::Journal { journal_command } => match journal_command {
-                prmait::input::JournalCommands::New { entry, tag } => new_entry_handler(
-                    Entry {
+                prmait::input::JournalCommands::New { entry, tag } => journal::handlers::new_entry(
+                    journal::Entry {
                         at: Local::now(),
                         body: Arc::new(entry),
                         tag,
@@ -41,19 +36,19 @@ fn main() -> Result<()> {
                     Local::now(),
                 )?,
                 prmait::input::JournalCommands::List => {
-                    list_entries_handler(&config.journal_path()?)?
+                    journal::handlers::list_entries(&config.journal_path()?)?
                 }
                 prmait::input::JournalCommands::Edit(edit_type) => match edit_type {
-                    prmait::input::JournalEditCommands::Last => edit_last_entry_handler(
+                    prmait::input::JournalEditCommands::Last => journal::handlers::edit_last_entry(
                         &config.journal_path()?,
                         editor(std::env::var_os("EDITOR"))?,
                     )?,
-                    prmait::input::JournalEditCommands::All => edit_all_entries_handler(
+                    prmait::input::JournalEditCommands::All => journal::handlers::edit_all_entries(
                         &config.journal_path()?,
                         editor(std::env::var_os("EDITOR"))?,
                     )?,
                     prmait::input::JournalEditCommands::Specific { item } => {
-                        edit_specific_entry_handler(
+                        journal::handlers::edit_specific_entry(
                             &config.journal_path()?,
                             item,
                             editor(std::env::var_os("EDITOR"))?,
@@ -61,7 +56,7 @@ fn main() -> Result<()> {
                     }
                 },
                 prmait::input::JournalCommands::Delete => {
-                    delete_interactive_handler(&config.journal_path()?, 20)?
+                    journal::handlers::delete_interactive(&config.journal_path()?, 20)?
                 }
             },
 
@@ -79,7 +74,7 @@ fn main() -> Result<()> {
                     let deadline = match deadline {
                         Some(s) => {
                             let nt = chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")?
-                                .and_hms_opt(0, 0, 0)
+                                .and_hms_opt(23, 59, 59)
                                 .ok_or(Report::msg("could not form date time for deadline time"))?;
                             let lo = Local
                                 .from_local_datetime(&nt)
@@ -123,8 +118,36 @@ fn main() -> Result<()> {
                         deadline,
                         best_starting_time,
                     };
-                    new_task_handler(&config.task_path()?, t)?;
+                    tasks::handlers::new_task(&config.task_path()?, t)?;
                 }
+                prmait::input::TaskCommands::List(t) => match t {
+                    prmait::input::TaskListCommand::Today => {
+                        let current = chrono::Local::now();
+                        let current_day_start = chrono::Local
+                            .with_ymd_and_hms(
+                                current.year(),
+                                current.month(),
+                                current.day(),
+                                0,
+                                0,
+                                0,
+                            )
+                            .single()
+                            .ok_or(Report::msg("could not form current day start"))?;
+                        let current_day_end = current_day_start
+                            .checked_add_days(Days::new(1))
+                            .ok_or(Report::msg("could not get current day's end"))?;
+                        let time_range = tasks::handlers::TimeRange {
+                            from: Some(current_day_start),
+                            to: Some(current_day_end),
+                        };
+                        let cwd = std::env::current_dir()?;
+                        let project_name = git::git_root(cwd).map(git::git_directory_name);
+                        let project = project_name.ok().and_then(result::Result::ok);
+
+                        todays_task(&config.task_path()?, time_range, project)?;
+                    }
+                },
             },
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

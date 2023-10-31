@@ -1,4 +1,4 @@
-use crate::tasks::Area;
+use crate::tasks::task::Area;
 use clap::{command, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -29,6 +29,7 @@ pub enum Commands {
         task_command: TaskCommands,
     },
 }
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
 pub enum JournalCommands {
@@ -44,6 +45,7 @@ pub enum JournalCommands {
     Edit(JournalEditCommands),
     Delete,
 }
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
 pub enum TaskCommands {
@@ -71,6 +73,20 @@ pub enum TaskCommands {
         #[arg(short = 'S', long)]
         best_starting_time: Option<String>,
     },
+    /// list tasks commands
+    #[command(subcommand)]
+    List(TaskListCommand),
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
+pub enum TaskListCommand {
+    Today,
+    // All, // Specific {
+    //     #[arg(short = 's', long)]
+    //     status_is:
+
+    // }
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

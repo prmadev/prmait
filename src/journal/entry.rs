@@ -23,25 +23,12 @@ impl ToFileName for Entry {
 
 impl PartialOrd for Entry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.at.partial_cmp(&other.at)
+        Some(self.cmp(other))
     }
 }
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.at.cmp(&other.at)
-    }
-}
-
-#[cfg(test)]
-mod testing {
-    #[allow(clippy::wildcard_imports)]
-    use super::*;
-
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-
-    #[test]
-    fn normal_types() {
-        is_normal::<Entry>();
     }
 }
 
@@ -85,5 +72,18 @@ impl Display for Entry {
             None => "".to_owned(),
         };
         write!(f, "{date}\n{body}\n{tags}")
+    }
+}
+
+#[cfg(test)]
+mod testing {
+    #[allow(clippy::wildcard_imports)]
+    use super::*;
+
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+
+    #[test]
+    fn normal_types() {
+        is_normal::<Entry>();
     }
 }
