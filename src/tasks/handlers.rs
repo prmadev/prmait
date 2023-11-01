@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
 
 use crate::files::ToFileName;
@@ -30,12 +31,12 @@ pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
 }
 
 pub fn todays_task(
-    task_dir: &PathBuf,
+    all_tasks: TaskList,
     time_range: TimeRange,
     of_project: Option<String>,
+    current_time: DateTime<Local>,
 ) -> Result<(), Error> {
     let today = chrono::Local::now();
-    let all_tasks = TaskList::try_from(task_dir)?;
     let todays_tasks_starting: Vec<&Task> = all_tasks
         .0
         .iter()
@@ -45,7 +46,7 @@ pub fn todays_task(
                 .is_some_and(|s| matches!(s, TaskState::ToDo(_)))
         })
         .filter(|t| {
-            if let Some(bst) = t.best_starting_time {
+            if let Some(bst) = t.start_to_end.from {
                 time_range.intersects_with(bst)
             } else {
                 false
@@ -59,11 +60,12 @@ pub fn todays_task(
             }
         })
         .collect();
+
     let todays_tasks_deadline: Vec<&Task> = all_tasks
         .0
         .iter()
         .filter(|t| {
-            if let Some(deadlined) = t.deadline {
+            if let Some(deadlined) = t.start_to_end.to {
                 time_range.intersects_with(deadlined)
             } else {
                 false
@@ -92,10 +94,14 @@ pub fn todays_task(
         "{:61}",
         "Starting from today:".bold().black().on_bright_blue()
     );
-    todays_tasks_starting.iter().for_each(|x| println!("\n{x}"));
+    todays_tasks_starting
+        .iter()
+        .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
     println!();
     println!("{:61}", "Deadline at today:".bold().black().on_red());
-    todays_tasks_deadline.iter().for_each(|x| println!("\n{x}"));
+    todays_tasks_deadline
+        .iter()
+        .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
 
     Ok(())
 }

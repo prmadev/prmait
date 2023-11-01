@@ -1,12 +1,12 @@
-use chrono::{Datelike, Days, Local, TimeZone};
+use chrono::{Local, TimeZone};
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
 use prmait::input::{Args, Configs};
 use prmait::tasks::handlers::todays_task;
 use prmait::tasks::task::{Task, TaskState};
+use prmait::tasks::tasklist::TaskList;
 use prmait::time::TimeRange;
 use prmait::{git, journal, tasks};
-use std::result;
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
@@ -71,7 +71,6 @@ fn main() -> Result<()> {
                     best_starting_time,
                     projects,
                 } => {
-                    let now = Local::now();
                     let deadline = match deadline {
                         Some(s) => {
                             let nt = chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")?
@@ -100,13 +99,14 @@ fn main() -> Result<()> {
                         }
                         None => None,
                     };
-
-                    let cwd = std::env::current_dir()?;
-                    let project_name = git::git_root(cwd).map(git::git_directory_name);
+                    let start_to_end = TimeRange::build(best_starting_time, deadline)?;
                     let mut projects = projects.unwrap_or(vec![]);
-                    if let Ok(Ok(p)) = project_name {
+                    if let Ok(Ok(p)) =
+                        git::git_root(std::env::current_dir()?).map(git::git_directory_name)
+                    {
                         projects.push(p);
                     }
+                    let now = Local::now();
                     let t = Task {
                         id: now.timestamp(),
                         time_created: now,
@@ -116,37 +116,21 @@ fn main() -> Result<()> {
                         area,
                         people: people.unwrap_or(vec![]),
                         projects,
-                        deadline,
-                        best_starting_time,
+                        start_to_end,
                     };
                     tasks::handlers::new_task(&config.task_path()?, t)?;
                 }
                 prmait::input::TaskCommands::List(t) => match t {
                     prmait::input::TaskListCommand::Today => {
                         let current = chrono::Local::now();
-                        let current_day_start = chrono::Local
-                            .with_ymd_and_hms(
-                                current.year(),
-                                current.month(),
-                                current.day(),
-                                0,
-                                0,
-                                0,
-                            )
-                            .single()
-                            .ok_or(Report::msg("could not form current day start"))?;
-                        let current_day_end = current_day_start
-                            .checked_add_days(Days::new(1))
-                            .ok_or(Report::msg("could not get current day's end"))?;
-                        let time_range = TimeRange {
-                            from: Some(current_day_start),
-                            to: Some(current_day_end),
-                        };
-                        let cwd = std::env::current_dir()?;
-                        let project_name = git::git_root(cwd).map(git::git_directory_name);
-                        let project = project_name.ok().and_then(result::Result::ok);
+                        let time_range = TimeRange::day_range_of_time(&current)?;
+                        let project = git::git_root(std::env::current_dir()?)
+                            .map(git::git_directory_name)
+                            .ok()
+                            .and_then(Result::ok);
+                        let tasklist = TaskList::try_from(&config.task_path()?)?;
 
-                        todays_task(&config.task_path()?, time_range, project)?;
+                        todays_task(tasklist, time_range, project, current)?;
                     }
                 },
             },

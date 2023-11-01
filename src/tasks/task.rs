@@ -1,13 +1,13 @@
-use std::{fmt::Display, path::PathBuf, str::FromStr, sync::Arc};
+use std::{fmt::Display, ops::Sub, path::PathBuf, str::FromStr, sync::Arc};
 
 use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
 
-use crate::files::ToFileName;
+use crate::{files::ToFileName, time::TimeRange};
 
 use super::{Error, FILE_NAME_FORMAT};
 
-const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M:%S";
+const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M";
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -20,66 +20,82 @@ pub struct Task {
     pub area: Option<Area>,
     pub people: Vec<String>,
     pub projects: Vec<String>,
-    pub deadline: Option<DateTime<Local>>,
-    pub best_starting_time: Option<DateTime<Local>>,
+    pub start_to_end: TimeRange,
 }
-impl Display for Task {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", &{
-            let mut all_buf = String::new();
+
+impl Task {
+    pub fn print_colorful_with_current_duration(
+        &self,
+        current_time: chrono::DateTime<Local>,
+    ) -> String {
+        let mut all_buf = String::new();
+        all_buf.push_str(&format!(
+            "{}\t{} {}",
+            self.current_state()
+                .expect("every task should have a current_state")
+                .black()
+                .on_magenta(),
+            "⍙".bright_black(),
+            self.id.bright_black().bold(),
+        ));
+        all_buf.push('\n');
+
+        all_buf.push_str(&format!("⍜ {}", self.title.bold()));
+        all_buf.push('\n');
+
+        if let Some(description) = &self.description {
             all_buf.push_str(&format!(
-                "{}\t{}\t{}",
-                self.current_state()
-                    .expect("every task should have a current_state")
-                    .black()
-                    .on_magenta(),
-                self.id.black().on_white().bold(),
-                self.title.bold().on_green().black(),
+                "{} {}",
+                "⍘".bright_black(),
+                &description.bright_black()
             ));
             all_buf.push('\n');
+        }
 
-            if let Some(description) = &self.description {
-                all_buf.push_str(&description.to_string());
-                all_buf.push('\n');
-            }
-
-            all_buf.push_str(&{
-                let mut buf = String::new();
-                if let Some(content) = &self.area {
-                    buf.push_str(&format!("{}{} ", "#".green(), content.green()));
-                };
-                self.projects.iter().for_each(|project| {
-                    buf.push_str(&format!("{}{} ", "?".yellow(), project.yellow()));
-                });
-                self.people.iter().for_each(|person| {
-                    buf.push_str(&format!("{}{} ", "@".blue().bold(), person.blue()));
-                });
-
-                buf
+        all_buf.push_str(&{
+            let mut buf = String::new();
+            if let Some(content) = &self.area {
+                buf.push_str(&format!("{}{} ", "#".green(), content.green()));
+            };
+            self.projects.iter().for_each(|project| {
+                buf.push_str(&format!("{}{} ", "?".yellow(), project.yellow()));
+            });
+            self.people.iter().for_each(|person| {
+                buf.push_str(&format!("{}{} ", "@".blue().bold(), person.blue()));
             });
 
-            all_buf.push('\n');
+            buf
+        });
 
-            all_buf.push_str(&{
-                let mut buf = String::new();
-                if let Some(at) = self.best_starting_time {
-                    buf.push_str(&format!(
-                        "start: {}\t",
-                        at.format(DATE_DISPLAY_FORMATTING).italic()
-                    ));
-                };
-                if let Some(at) = self.deadline {
-                    buf.push_str(&format!(
-                        "deadline: {}\t",
-                        at.format(DATE_DISPLAY_FORMATTING).italic()
-                    ));
-                };
+        all_buf.push('\n');
 
-                buf
-            });
+        all_buf.push_str(&{
+            let mut buf = String::new();
+            if let Some(at) = self.start_to_end.from {
+                buf.push_str(&format!(
+                    "{}",
+                    at.format(DATE_DISPLAY_FORMATTING).italic().bright_black()
+                ));
+            };
+            buf.push_str(&format!("{}", " ⇰ ".bright_black().bold()));
+            if let Some(at) = self.start_to_end.to {
+                let until = at.sub(current_time);
+                buf.push_str(&format!(
+                    "{}",
+                    at.format(DATE_DISPLAY_FORMATTING).italic().bright_black()
+                ));
+                buf.push_str(&format!(
+                    "{}",
+                    format!(" ◕ {}d{}h", until.num_days(), until.num_hours())
+                        .bright_black()
+                        .bold()
+                ));
+            };
 
-            all_buf
-        })
+            buf
+        });
+
+        all_buf
     }
 }
 
@@ -117,8 +133,8 @@ impl Default for Task {
             people: vec![],
             projects: vec![],
             time_created: now,
-            deadline: None,
-            best_starting_time: None,
+            start_to_end: TimeRange::build(None, None).unwrap(), // It should never return errors
+                                                                 // with these values.
         }
     }
 }
@@ -142,10 +158,10 @@ impl Display for TaskState {
             f,
             "{}",
             match self {
-                TaskState::Backlog(_) => "BKLG",
-                TaskState::Abandoned(_, _) => "ABND",
-                TaskState::Done(_) => "DONE",
-                TaskState::ToDo(_) => "TODO",
+                TaskState::Backlog(_) => "⚏ BKLG",
+                TaskState::Abandoned(_, _) => "☓ ABND",
+                TaskState::Done(_) => "☑ DONE",
+                TaskState::ToDo(_) => "☐ TODO",
             }
         )
     }
