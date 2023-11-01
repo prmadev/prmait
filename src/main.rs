@@ -137,6 +137,22 @@ fn main() -> Result<()> {
                     let current = chrono::Local::now();
                     mark_task_as(&config.task_path()?, TaskState::Done(current), id)?;
                 }
+                prmait::input::TaskCommands::Backlog { id } => {
+                    let current = chrono::Local::now();
+                    mark_task_as(&config.task_path()?, TaskState::Backlog(current), id)?;
+                }
+                prmait::input::TaskCommands::Abandon { id, content } => {
+                    let current = chrono::Local::now();
+                    mark_task_as(
+                        &config.task_path()?,
+                        TaskState::Abandoned(current, content),
+                        id,
+                    )?;
+                }
+                prmait::input::TaskCommands::Todo { id } => {
+                    let current = chrono::Local::now();
+                    mark_task_as(&config.task_path()?, TaskState::ToDo(current), id)?;
+                }
             },
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

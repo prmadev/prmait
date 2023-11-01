@@ -43,6 +43,7 @@ pub enum JournalCommands {
     /// edit commands
     #[command(subcommand)]
     Edit(JournalEditCommands),
+    /// interactively delete an entry
     Delete,
 }
 
@@ -73,12 +74,17 @@ pub enum TaskCommands {
         #[arg(short = 'S', long)]
         best_starting_time: Option<String>,
     },
-    /// list tasks commands
+    /// List tasks commands
     #[command(subcommand)]
     List(TaskListCommand),
-    Done {
-        id: i64,
-    },
+    /// Set the task as done
+    Done { id: i64 },
+    /// Set the task as backlogged
+    Backlog { id: i64 },
+    /// Set the task as abandoned
+    Abandon { id: i64, content: Option<String> },
+    /// Set the task as todo
+    Todo { id: i64 },
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
