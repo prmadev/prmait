@@ -29,6 +29,36 @@ pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
 
     Ok(())
 }
+pub fn mark_task_as(
+    task_dir: &PathBuf,
+    state: TaskState,
+    task_identifier: i64,
+) -> Result<(), Error> {
+    let task_list = TaskList::try_from(task_dir)?;
+    let tasks: Box<[Task]> = task_list
+        .0
+        .into_iter()
+        .filter(|x| x.id.to_string().contains(&task_identifier.to_string()))
+        .collect();
+    if tasks.len() > 1 {
+        return Err(Error::MoreThanOneTaskWasFound(tasks));
+    }
+    let mut the_task: Task = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
+    let mut new_state_log = the_task.state_log.clone();
+    new_state_log.push(state);
+    the_task.state_log = new_state_log;
+
+    let file_path = task_dir.join(the_task.to_file_name());
+
+    fs_extra::file::write_all(
+        file_path,
+        &serde_json::to_string_pretty(&the_task)
+            .map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
+    )
+    .map_err(Error::FileCouldNotBeWrittenTo)?;
+
+    Ok(())
+}
 
 pub fn todays_task(
     all_tasks: TaskList,

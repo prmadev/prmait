@@ -2,7 +2,7 @@ use chrono::{Local, TimeZone};
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
 use prmait::input::{Args, Configs};
-use prmait::tasks::handlers::todays_task;
+use prmait::tasks::handlers::{mark_task_as, todays_task};
 use prmait::tasks::task::{Task, TaskState};
 use prmait::tasks::tasklist::TaskList;
 use prmait::time::TimeRange;
@@ -110,7 +110,7 @@ fn main() -> Result<()> {
                     let t = Task {
                         id: now.timestamp(),
                         time_created: now,
-                        state_log: Arc::new([TaskState::ToDo(now)]),
+                        state_log: vec![TaskState::ToDo(now)],
                         title,
                         description,
                         area,
@@ -133,6 +133,10 @@ fn main() -> Result<()> {
                         todays_task(tasklist, time_range, project, current)?;
                     }
                 },
+                prmait::input::TaskCommands::Done { id } => {
+                    let current = chrono::Local::now();
+                    mark_task_as(&config.task_path()?, TaskState::Done(current), id)?;
+                }
             },
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

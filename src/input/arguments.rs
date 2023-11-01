@@ -76,6 +76,9 @@ pub enum TaskCommands {
     /// list tasks commands
     #[command(subcommand)]
     List(TaskListCommand),
+    Done {
+        id: i64,
+    },
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

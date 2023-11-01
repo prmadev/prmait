@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Sub, path::PathBuf, str::FromStr, sync::Arc};
+use std::{fmt::Display, ops::Sub, path::PathBuf, str::FromStr};
 
 use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
@@ -14,7 +14,7 @@ const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M";
 pub struct Task {
     pub id: i64,
     pub time_created: DateTime<Local>,
-    pub state_log: Arc<[TaskState]>,
+    pub state_log: Vec<TaskState>,
     pub title: String,
     pub description: Option<String>,
     pub area: Option<Area>,
@@ -126,7 +126,7 @@ impl Default for Task {
         let now = Local::now();
         Self {
             id: now.timestamp(),
-            state_log: Arc::new([TaskState::default()]),
+            state_log: vec![TaskState::default()],
             title: "".to_owned(),
             description: None,
             area: None,

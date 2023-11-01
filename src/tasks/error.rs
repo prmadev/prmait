@@ -1,3 +1,5 @@
+use super::task::Task;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("directory could not be created")]
@@ -14,6 +16,10 @@ pub enum Error {
     FileCouldNotDeserializeEntryFromJson(serde_json::Error),
     #[error("file cannot be read: {0}")]
     FileCouldNotBeRead(fs_extra::error::Error),
+    #[error("more than one task with that ID was found: {0:?}")]
+    MoreThanOneTaskWasFound(Box<[Task]>),
+    #[error("no tasks with that identifier was found")]
+    NoTasksFound,
 }
 #[cfg(test)]
 mod testing {
