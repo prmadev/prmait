@@ -29,6 +29,7 @@ pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
 
     Ok(())
 }
+
 pub fn mark_task_as(
     task_dir: &PathBuf,
     state: TaskState,

@@ -17,12 +17,13 @@ pub struct Args {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
 pub enum Commands {
-    /// Journal
+    /// Journaling
     Journal {
         /// journal commands
         #[command(subcommand)]
         journal_command: JournalCommands,
     },
+    /// Task Management
     Task {
         /// task commands
         #[command(subcommand)]
@@ -90,6 +91,7 @@ pub enum TaskCommands {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
 pub enum TaskListCommand {
+    /// Only show tasks that start today, or have a deadline for today
     Today,
     // All, // Specific {
     //     #[arg(short = 's', long)]
@@ -101,7 +103,10 @@ pub enum TaskListCommand {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
 pub enum JournalEditCommands {
+    /// Only edit the last entry
     Last,
+    /// Open every entry in the editor
     All,
+    /// Open only strings matching the given entry
     Specific { item: String },
 }
