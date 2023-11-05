@@ -39,7 +39,7 @@ pub enum JournalCommands {
         entry: String,
         /// Tags that apply to this item [OPTIONAL]
         #[arg(short = 't', long)]
-        tag: Option<Vec<String>>,
+        tag: Vec<String>,
         /// Mood associated with this entry [Required]
         #[arg(short = 'm', long)]
         mood: Mood,

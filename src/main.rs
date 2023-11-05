@@ -37,7 +37,7 @@ fn main() -> Result<()> {
                     journal::Entry {
                         at: Local::now(),
                         body: Arc::new(entry),
-                        tag: tag.unwrap_or_default(),
+                        tag,
                         mood,
                         people,
                     },
