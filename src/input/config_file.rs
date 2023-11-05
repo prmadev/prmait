@@ -59,3 +59,14 @@ pub enum Error {
     #[error("The path to the directory is not given")]
     DirDoesNotExist,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    #[test]
+    fn normal_types() {
+        is_normal::<Configs>();
+    }
+}

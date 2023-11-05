@@ -28,11 +28,18 @@ fn main() -> Result<()> {
     match args.command {
         Some(general_command) => match general_command {
             prmait::input::Commands::Journal { journal_command } => match journal_command {
-                prmait::input::JournalCommands::New { entry, tag } => journal::handlers::new_entry(
+                prmait::input::JournalCommands::New {
+                    entry,
+                    tag,
+                    mood,
+                    people,
+                } => journal::handlers::new_entry(
                     journal::Entry {
                         at: Local::now(),
                         body: Arc::new(entry),
-                        tag,
+                        tag: tag.unwrap_or_default(),
+                        mood,
+                        people,
                     },
                     &config.journal_path()?,
                     Local::now(),

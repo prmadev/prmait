@@ -1,6 +1,7 @@
 use std::{fmt::Display, path::PathBuf, sync::Arc};
 
 use chrono::{DateTime, Local};
+use clap::ValueEnum;
 use color_eyre::owo_colors::OwoColorize;
 
 use super::Error;
@@ -10,7 +11,32 @@ use super::Error;
 pub struct Entry {
     pub at: DateTime<Local>,
     pub body: Arc<String>,
-    pub tag: Option<Vec<String>>,
+    pub tag: Vec<String>,
+    pub mood: Mood,
+    pub people: Vec<String>,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default, ValueEnum)]
+pub enum Mood {
+    Good,
+    Bad,
+    #[default]
+    Neutral,
+}
+
+impl Display for Mood {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Good => "Good",
+                Self::Bad => "Bad",
+                Self::Neutral => "Neutral",
+            }
+        )
+    }
 }
 
 const FILE_NAME_FORMAT: &str = "%Y-%m-%d-%H-%M-%S.json";
@@ -65,12 +91,14 @@ impl Display for Entry {
 
         let body = format!("{}", self.body.bold());
 
-        let tags = match self.tag.clone() {
-            Some(t) => t.into_iter().fold("".to_owned(), |accu, item| {
+        let tags = if self.tag.is_empty() {
+            "".to_owned()
+        } else {
+            self.tag.iter().fold("".to_owned(), |accu, item| {
                 format!("{}#{} ", accu, item.italic())
-            }),
-            None => "".to_owned(),
+            })
         };
+
         write!(f, "{date}\n{body}\n{tags}")
     }
 }

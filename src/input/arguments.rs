@@ -1,4 +1,4 @@
-use crate::tasks::task::Area;
+use crate::{journal::Mood, tasks::task::Area};
 use clap::{command, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -37,7 +37,15 @@ pub enum JournalCommands {
     /// New Entry
     New {
         entry: String,
+        /// Tags that apply to this item [OPTIONAL]
+        #[arg(short = 't', long)]
         tag: Option<Vec<String>>,
+        /// Mood associated with this entry [Required]
+        #[arg(short = 'm', long)]
+        mood: Mood,
+        /// People related to this entry  [OPTIONAL]
+        #[arg(short = 'p', long)]
+        people: Vec<String>,
     },
     /// List of entries
     List,
@@ -113,4 +121,15 @@ pub enum JournalEditCommands {
     All,
     /// Open only strings matching the given entry
     Specific { item: String },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    #[test]
+    fn normal_types() {
+        is_normal::<Commands>();
+    }
 }
