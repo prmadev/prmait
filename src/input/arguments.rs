@@ -93,6 +93,10 @@ pub enum TaskCommands {
 pub enum TaskListCommand {
     /// Only show tasks that start today, or have a deadline for today
     Today,
+    Todo,
+    Done,
+    Abandoned,
+    Backlogged,
     // All, // Specific {
     //     #[arg(short = 's', long)]
     //     status_is:

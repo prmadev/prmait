@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, rc::Rc};
 
 use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
@@ -119,20 +119,72 @@ pub fn todays_task(
             .black()
             .on_cyan()
     );
-    println!();
 
-    println!(
-        "{:61}",
-        "Starting from today:".bold().black().on_bright_blue()
-    );
-    todays_tasks_starting
-        .iter()
-        .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
-    println!();
-    println!("{:61}", "Deadline at today:".bold().black().on_red());
-    todays_tasks_deadline
-        .iter()
-        .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+    if !todays_tasks_starting.is_empty() {
+        println!();
+        println!(
+            "{:61}",
+            "Starting from today:".bold().black().on_bright_blue()
+        );
+        todays_tasks_starting
+            .iter()
+            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+    }
+    if !todays_tasks_deadline.is_empty() {
+        println!();
+        println!("{:61}", "Deadline at today:".bold().black().on_red());
+        todays_tasks_deadline
+            .iter()
+            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+    }
 
     Ok(())
+}
+pub fn tasks_by_state(
+    all_tasks: TaskList,
+    task_state_finder: Rc<impl Fn(&TaskState) -> bool>,
+    of_project: Option<String>,
+    current_time: DateTime<Local>,
+) -> Result<(), Error> {
+    let today = chrono::Local::now();
+    let chosen_tasks: Vec<Task> = all_tasks
+        .0
+        .into_iter()
+        .filter(|task| {
+            task.state_log
+                .last()
+                .is_some_and(|task_state| task_state_finder(task_state))
+        })
+        .filter(|task| {
+            if let Some(proj) = &of_project {
+                task.projects.contains(proj)
+            } else {
+                true
+            }
+        })
+        .collect();
+
+    if !chosen_tasks.is_empty() {
+        println!();
+        println!("{}", today_formatted(today));
+        println!();
+
+        println!(
+            "{:61}",
+            "tasks with that criteria:".bold().black().on_bright_blue()
+        );
+
+        chosen_tasks
+            .iter()
+            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+    }
+
+    Ok(())
+}
+fn today_formatted(today: chrono::DateTime<Local>) -> String {
+    format!("Date Today: {}", today.format("%Y-%m-%d"))
+        .bold()
+        .black()
+        .on_cyan()
+        .to_string()
 }

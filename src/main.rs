@@ -2,11 +2,12 @@ use chrono::{Local, TimeZone};
 use clap::Parser;
 use color_eyre::{eyre::Result, Report};
 use prmait::input::{Args, Configs};
-use prmait::tasks::handlers::{mark_task_as, todays_task};
+use prmait::tasks::handlers::{mark_task_as, tasks_by_state, todays_task};
 use prmait::tasks::task::{Task, TaskState};
 use prmait::tasks::tasklist::TaskList;
 use prmait::time::TimeRange;
 use prmait::{git, journal, tasks};
+use std::rc::Rc;
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
@@ -120,7 +121,7 @@ fn main() -> Result<()> {
                     };
                     tasks::handlers::new_task(&config.task_path()?, t)?;
                 }
-                prmait::input::TaskCommands::List(t) => match t {
+                prmait::input::TaskCommands::List(task_list_command) => match task_list_command {
                     prmait::input::TaskListCommand::Today => {
                         let current = chrono::Local::now();
                         let time_range = TimeRange::day_range_of_time(&current)?;
@@ -131,6 +132,62 @@ fn main() -> Result<()> {
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
 
                         todays_task(tasklist, time_range, project, current)?;
+                    }
+                    prmait::input::TaskListCommand::Todo => {
+                        let current = chrono::Local::now();
+                        let project = git::git_root(std::env::current_dir()?)
+                            .map(git::git_directory_name)
+                            .ok()
+                            .and_then(Result::ok);
+                        let tasklist = TaskList::try_from(&config.task_path()?)?;
+                        tasks_by_state(
+                            tasklist,
+                            Rc::new(|x: &_| matches!(x, TaskState::ToDo(_))),
+                            project,
+                            current,
+                        )?;
+                    }
+                    prmait::input::TaskListCommand::Done => {
+                        let current = chrono::Local::now();
+                        let project = git::git_root(std::env::current_dir()?)
+                            .map(git::git_directory_name)
+                            .ok()
+                            .and_then(Result::ok);
+                        let tasklist = TaskList::try_from(&config.task_path()?)?;
+                        tasks_by_state(
+                            tasklist,
+                            Rc::new(|x: &_| matches!(x, TaskState::Done(_))),
+                            project,
+                            current,
+                        )?;
+                    }
+                    prmait::input::TaskListCommand::Abandoned => {
+                        let current = chrono::Local::now();
+                        let project = git::git_root(std::env::current_dir()?)
+                            .map(git::git_directory_name)
+                            .ok()
+                            .and_then(Result::ok);
+                        let tasklist = TaskList::try_from(&config.task_path()?)?;
+                        tasks_by_state(
+                            tasklist,
+                            Rc::new(|x: &_| matches!(x, TaskState::Abandoned(_, _))),
+                            project,
+                            current,
+                        )?;
+                    }
+                    prmait::input::TaskListCommand::Backlogged => {
+                        let current = chrono::Local::now();
+                        let project = git::git_root(std::env::current_dir()?)
+                            .map(git::git_directory_name)
+                            .ok()
+                            .and_then(Result::ok);
+                        let tasklist = TaskList::try_from(&config.task_path()?)?;
+                        tasks_by_state(
+                            tasklist,
+                            Rc::new(|x: &_| matches!(x, TaskState::Backlog(_))),
+                            project,
+                            current,
+                        )?;
                     }
                 },
                 prmait::input::TaskCommands::Done { id } => {
