@@ -1,5 +1,5 @@
 use chrono::{Local, TimeZone};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use color_eyre::{eyre::Result, Report};
 use prmait::input::{Args, Configs};
 use prmait::tasks::handlers::{mark_task_as, tasks_by_state, todays_task};
@@ -218,6 +218,9 @@ fn main() -> Result<()> {
                     mark_task_as(&config.task_path()?, TaskState::ToDo(current), id)?;
                 }
             },
+            prmait::input::Commands::Completions { shell } => {
+                shell.generate(&mut Args::command(), &mut std::io::stdout());
+            }
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),
     }

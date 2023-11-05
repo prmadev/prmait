@@ -2,8 +2,7 @@ use crate::{journal::Mood, tasks::task::Area};
 use clap::{command, Parser, Subcommand};
 use std::path::PathBuf;
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Parser)]
+#[derive(Clone, Debug, Parser)]
 #[command(version,about, long_about = None, arg_required_else_help = true)]
 pub struct Args {
     /// Sets a custom config file
@@ -14,9 +13,13 @@ pub struct Args {
     pub command: Option<Commands>,
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum Commands {
+    Completions {
+        /// The shell to generate the completions for
+        #[arg(value_enum)]
+        shell: clap_complete_command::Shell,
+    },
     /// Journaling
     Journal {
         /// journal commands
