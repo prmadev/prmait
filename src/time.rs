@@ -33,6 +33,12 @@ impl TimeRange {
         }
         true
     }
+    pub fn is_after(&self, point: chrono::DateTime<Local>) -> bool {
+        if self.from.is_some_and(|fr| fr > point) {
+            return true;
+        }
+        false
+    }
     pub fn day_range_of_time(point: &chrono::DateTime<Local>) -> Result<Self, Error> {
         let fr = chrono::Local
             .with_ymd_and_hms(point.year(), point.month(), point.day(), 0, 0, 0)

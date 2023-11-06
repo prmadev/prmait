@@ -111,6 +111,25 @@ pub fn todays_task(
         })
         .collect();
 
+    let todays_tasks_overdue: Vec<&Task> = all_tasks
+        .0
+        .iter()
+        .filter(|t| {
+            if let Some(deadlined) = t.start_to_end.to {
+                time_range.is_after(deadlined)
+            } else {
+                false
+            }
+        })
+        .filter(|t| {
+            if let Some(proj) = &of_project {
+                t.projects.contains(proj)
+            } else {
+                true
+            }
+        })
+        .collect();
+
     println!();
     println!(
         "{}",
@@ -133,6 +152,13 @@ pub fn todays_task(
     if !todays_tasks_deadline.is_empty() {
         println!();
         println!("{:61}", "Deadline at today:".bold().black().on_red());
+        todays_tasks_deadline
+            .iter()
+            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+    }
+    if !todays_tasks_overdue.is_empty() {
+        println!();
+        println!("{:61}", "overdue at today:".bold().black().on_red());
         todays_tasks_deadline
             .iter()
             .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
