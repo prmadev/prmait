@@ -17,7 +17,7 @@ pub enum Error {
     #[error("file cannot be read: {0}")]
     FileCouldNotBeRead(fs_extra::error::Error),
     #[error("more than one task with that ID was found: {0:?}")]
-    MoreThanOneTaskWasFound(Box<[Task]>),
+    MoreThanOneTaskWasFound(Box<Vec<Task>>),
     #[error("no tasks with that identifier was found")]
     NoTasksFound,
 }

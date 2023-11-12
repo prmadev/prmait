@@ -19,6 +19,16 @@ impl TryFrom<PathBuf> for Configs {
             .extract()?)
     }
 }
+impl TryFrom<&PathBuf> for Configs {
+    type Error = ConfigErr;
+
+    fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
+        Ok(Figment::new()
+            .merge(Json::file(value))
+            .merge(Env::prefixed("PRMA_IT_"))
+            .extract()?)
+    }
+}
 #[derive(Clone, Debug, PartialEq, thiserror::Error)]
 pub enum ConfigErr {
     #[error("could not extract configuration: {0}")]

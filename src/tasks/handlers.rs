@@ -1,4 +1,4 @@
-use std::{path::PathBuf, rc::Rc};
+use std::path::PathBuf;
 
 use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
@@ -35,24 +35,18 @@ pub fn mark_task_as(
     state: TaskState,
     task_identifier: i64,
 ) -> Result<(), Error> {
-    let task_list = TaskList::try_from(task_dir)?;
-    let tasks: Box<[Task]> = task_list
-        .0
-        .into_iter()
-        .filter(|x| x.id.to_string().contains(&task_identifier.to_string()))
-        .collect();
-    if tasks.len() > 1 {
-        return Err(Error::MoreThanOneTaskWasFound(tasks));
-    }
-    let mut the_task: Task = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
-    let mut new_state_log = the_task.state_log.clone();
-    new_state_log.push(state);
-    the_task.state_log = new_state_log;
+    let mut tasks = TaskList::try_from(task_dir)?.0;
+    tasks.retain(|x| x.id.to_string().contains(&task_identifier.to_string()));
 
-    let file_path = task_dir.join(the_task.to_file_name());
+    if tasks.len() > 1 {
+        return Err(Error::MoreThanOneTaskWasFound(Box::new(tasks)));
+    }
+
+    let mut the_task: Task = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
+    the_task.state_log.push(state);
 
     fs_extra::file::write_all(
-        file_path,
+        task_dir.join(the_task.to_file_name()),
         &serde_json::to_string_pretty(&the_task)
             .map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
     )
@@ -68,67 +62,43 @@ pub fn todays_task(
     current_time: DateTime<Local>,
 ) -> Result<(), Error> {
     let today = chrono::Local::now();
-    let todays_tasks_starting: Vec<&Task> = all_tasks
-        .0
-        .iter()
-        .filter(|t| {
-            t.state_log
-                .last()
-                .is_some_and(|s| matches!(s, TaskState::ToDo(_)))
-        })
-        .filter(|t| {
-            if let Some(bst) = t.start_to_end.from {
-                time_range.intersects_with(bst)
-            } else {
-                false
-            }
-        })
-        .filter(|t| {
-            if let Some(proj) = &of_project {
-                t.projects.contains(proj)
-            } else {
-                true
-            }
-        })
-        .collect();
+    let mut todays_tasks_starting = all_tasks.0.clone();
+    todays_tasks_starting.retain(|t| {
+        let Some(last) = t.state_log.last() else {
+            return false;
+        };
+        if !matches!(last, TaskState::ToDo(_)) {
+            return false;
+        };
+        let Some(bst) = t.start_to_end.from else {
+            return false;
+        };
+        time_range.intersects_with(bst)
+    });
 
-    let todays_tasks_deadline: Vec<&Task> = all_tasks
-        .0
-        .iter()
-        .filter(|t| {
-            if let Some(deadlined) = t.start_to_end.to {
-                time_range.intersects_with(deadlined)
-            } else {
-                false
-            }
-        })
-        .filter(|t| {
-            if let Some(proj) = &of_project {
-                t.projects.contains(proj)
-            } else {
-                true
-            }
-        })
-        .collect();
+    let mut todays_tasks_deadline: Vec<Task> = all_tasks.0.clone();
+    todays_tasks_deadline.retain(|t| {
+        let Some(deadlined) = t.start_to_end.to else {
+            return false;
+        };
+        if !time_range.intersects_with(deadlined) {
+            return false;
+        }
+        let Some(proj) = &of_project else { return true };
+        t.projects.contains(proj)
+    });
 
-    let todays_tasks_overdue: Vec<&Task> = all_tasks
-        .0
-        .iter()
-        .filter(|t| {
-            if let Some(deadlined) = t.start_to_end.to {
-                time_range.is_after(deadlined)
-            } else {
-                false
-            }
-        })
-        .filter(|t| {
-            if let Some(proj) = &of_project {
-                t.projects.contains(proj)
-            } else {
-                true
-            }
-        })
-        .collect();
+    let mut todays_tasks_overdue: Vec<Task> = all_tasks.0;
+    todays_tasks_overdue.retain(|t| {
+        let Some(deadlined) = t.start_to_end.to else {
+            return false;
+        };
+        if !time_range.is_after(deadlined) {
+            return false;
+        };
+        let Some(proj) = &of_project else { return true };
+        t.projects.contains(proj)
+    });
 
     println!();
     println!(
@@ -166,29 +136,29 @@ pub fn todays_task(
 
     Ok(())
 }
-pub fn tasks_by_state(
+pub fn tasks_by_state<F>(
     all_tasks: TaskList,
-    task_state_finder: Rc<impl Fn(&TaskState) -> bool>,
+    task_state_finder: F,
     of_project: Option<String>,
     current_time: DateTime<Local>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    F: Fn(&TaskState) -> bool,
+{
     let today = chrono::Local::now();
-    let chosen_tasks: Vec<Task> = all_tasks
-        .0
-        .into_iter()
-        .filter(|task| {
-            task.state_log
-                .last()
-                .is_some_and(|task_state| task_state_finder(task_state))
-        })
-        .filter(|task| {
-            if let Some(proj) = &of_project {
-                task.projects.contains(proj)
-            } else {
-                true
-            }
-        })
-        .collect();
+    let mut chosen_tasks: Vec<Task> = all_tasks.0;
+    chosen_tasks.retain(|task| {
+        let Some(last) = task.state_log.last() else {
+            return false;
+        };
+        if !task_state_finder(last) {
+            return false;
+        };
+        let Some(proj) = &of_project else {
+            return true;
+        };
+        task.projects.contains(proj)
+    });
 
     if !chosen_tasks.is_empty() {
         println!();

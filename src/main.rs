@@ -7,7 +7,6 @@ use prmait::tasks::task::{Task, TaskState};
 use prmait::tasks::tasklist::TaskList;
 use prmait::time::TimeRange;
 use prmait::{git, journal, tasks};
-use std::rc::Rc;
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
@@ -17,13 +16,7 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    let config = {
-        let config_file_path = match &args.config {
-            Some(p) => p.clone(),
-            None => PathBuf::from(DEFAULT_CONFIG_PATH),
-        };
-        Configs::try_from(config_file_path)?
-    };
+    let config = Configs::try_from(&args.config.unwrap_or(PathBuf::from(DEFAULT_CONFIG_PATH)))?;
 
     match args.command {
         Some(general_command) => match general_command {
@@ -149,7 +142,7 @@ fn main() -> Result<()> {
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
                         tasks_by_state(
                             tasklist,
-                            Rc::new(|x: &_| matches!(x, TaskState::ToDo(_))),
+                            |x| matches!(x, &TaskState::ToDo(_)),
                             project,
                             current,
                         )?;
@@ -163,7 +156,7 @@ fn main() -> Result<()> {
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
                         tasks_by_state(
                             tasklist,
-                            Rc::new(|x: &_| matches!(x, TaskState::Done(_))),
+                            |x| matches!(x, &TaskState::Done(_)),
                             project,
                             current,
                         )?;
@@ -177,7 +170,7 @@ fn main() -> Result<()> {
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
                         tasks_by_state(
                             tasklist,
-                            Rc::new(|x: &_| matches!(x, TaskState::Abandoned(_, _))),
+                            |x| matches!(x, TaskState::Abandoned(_, _)),
                             project,
                             current,
                         )?;
@@ -191,7 +184,7 @@ fn main() -> Result<()> {
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
                         tasks_by_state(
                             tasklist,
-                            Rc::new(|x: &_| matches!(x, TaskState::Backlog(_))),
+                            |x| matches!(x, TaskState::Backlog(_)),
                             project,
                             current,
                         )?;

@@ -8,7 +8,6 @@ pub fn git_root(p: PathBuf) -> Result<PathBuf, Error> {
         .ok_or(Error::DirectoryParentIsNotFound)
         .map(PathBuf::from)
 }
-
 pub fn git_directory_name(p: PathBuf) -> Result<String, Error> {
     let git_root = git_root(p)?;
     let project_name = git_root
