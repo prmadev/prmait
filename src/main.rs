@@ -103,7 +103,7 @@ fn main() -> Result<()> {
                     let start_to_end = TimeRange::build(best_starting_time, deadline)?;
                     let mut projects = projects.unwrap_or(vec![]);
                     if let Ok(Ok(p)) =
-                        git::git_root(std::env::current_dir()?).map(git::git_directory_name)
+                        git::repo_root(std::env::current_dir()?).map(git::repo_directory_name)
                     {
                         projects.push(p);
                     }
@@ -125,8 +125,8 @@ fn main() -> Result<()> {
                     prmait::input::TaskListCommand::Today => {
                         let current = chrono::Local::now();
                         let time_range = TimeRange::day_range_of_time(&current)?;
-                        let project = git::git_root(std::env::current_dir()?)
-                            .map(git::git_directory_name)
+                        let project = git::repo_root(std::env::current_dir()?)
+                            .map(git::repo_directory_name)
                             .ok()
                             .and_then(Result::ok);
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
@@ -135,8 +135,8 @@ fn main() -> Result<()> {
                     }
                     prmait::input::TaskListCommand::Todo => {
                         let current = chrono::Local::now();
-                        let project = git::git_root(std::env::current_dir()?)
-                            .map(git::git_directory_name)
+                        let project = git::repo_root(std::env::current_dir()?)
+                            .map(git::repo_directory_name)
                             .ok()
                             .and_then(Result::ok);
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
@@ -149,8 +149,8 @@ fn main() -> Result<()> {
                     }
                     prmait::input::TaskListCommand::Done => {
                         let current = chrono::Local::now();
-                        let project = git::git_root(std::env::current_dir()?)
-                            .map(git::git_directory_name)
+                        let project = git::repo_root(std::env::current_dir()?)
+                            .map(git::repo_directory_name)
                             .ok()
                             .and_then(Result::ok);
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
@@ -163,8 +163,8 @@ fn main() -> Result<()> {
                     }
                     prmait::input::TaskListCommand::Abandoned => {
                         let current = chrono::Local::now();
-                        let project = git::git_root(std::env::current_dir()?)
-                            .map(git::git_directory_name)
+                        let project = git::repo_root(std::env::current_dir()?)
+                            .map(git::repo_directory_name)
                             .ok()
                             .and_then(Result::ok);
                         let tasklist = TaskList::try_from(&config.task_path()?)?;
@@ -177,8 +177,8 @@ fn main() -> Result<()> {
                     }
                     prmait::input::TaskListCommand::Backlogged => {
                         let current = chrono::Local::now();
-                        let project = git::git_root(std::env::current_dir()?)
-                            .map(git::git_directory_name)
+                        let project = git::repo_root(std::env::current_dir()?)
+                            .map(git::repo_directory_name)
                             .ok()
                             .and_then(Result::ok);
                         let tasklist = TaskList::try_from(&config.task_path()?)?;

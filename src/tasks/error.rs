@@ -1,3 +1,5 @@
+use crate::git;
+
 use super::task::Task;
 
 #[derive(Debug, thiserror::Error)]
@@ -20,6 +22,8 @@ pub enum Error {
     MoreThanOneTaskWasFound(Box<Vec<Task>>),
     #[error("no tasks with that identifier was found")]
     NoTasksFound,
+    #[error("got error from running git command: {0}")]
+    GitError(git::Error),
 }
 #[cfg(test)]
 mod testing {

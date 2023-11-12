@@ -1,10 +1,11 @@
+use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
 
-use crate::files::ToFileName;
 use crate::time::TimeRange;
+use crate::{files::ToFileName, git};
 
 use super::{
     task::{Task, TaskState},
@@ -22,10 +23,20 @@ pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
     }
 
     fs_extra::file::write_all(
-        file_path,
+        &file_path,
         &serde_json::to_string_pretty(&t).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
     )
     .map_err(Error::FileCouldNotBeWrittenTo)?;
+    let repo_root = git::repo_root(task_dir.to_path_buf())
+        .map_err(Error::GitError)?
+        .into_os_string();
+    git::add(&repo_root, &[&file_path.into_os_string()]).map_err(Error::GitError)?;
+    git::commit(
+        &repo_root,
+        OsStr::new(&format!("feat: new task created {}", t.id)),
+    )
+    .map_err(Error::GitError)?;
+    git::push(&repo_root).map_err(Error::GitError)?;
 
     Ok(())
 }
