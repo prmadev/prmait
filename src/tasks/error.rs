@@ -2,6 +2,8 @@ use crate::git;
 
 use super::task::Task;
 
+pub(super) type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("directory could not be created")]

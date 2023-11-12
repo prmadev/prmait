@@ -7,13 +7,14 @@ use color_eyre::owo_colors::OwoColorize;
 use crate::time::TimeRange;
 use crate::{files::ToFileName, git};
 
+use super::Result;
 use super::{
     task::{Task, TaskState},
     tasklist::TaskList,
     Error,
 };
 
-pub fn new_task(task_dir: PathBuf, t: Task) -> Result<(), Error> {
+pub fn new_task(task_dir: PathBuf, t: Task) -> Result<()> {
     _ = fs_extra::dir::create(&task_dir, false).map_err(Error::DirCouldNotBeCreated);
 
     let file_path = task_dir.join(t.to_file_name());
@@ -35,14 +36,11 @@ pub fn new_task(task_dir: PathBuf, t: Task) -> Result<(), Error> {
         OsStr::new(&format!("feat(tasks): add new task file  {}", t.id)),
     )
     .map_err(Error::GitError)?;
+
     Ok(())
 }
 
-pub fn mark_task_as(
-    task_dir: &PathBuf,
-    state: TaskState,
-    task_identifier: i64,
-) -> Result<(), Error> {
+pub fn mark_task_as(task_dir: &PathBuf, state: TaskState, task_identifier: i64) -> Result<()> {
     let mut tasks = TaskList::try_from(task_dir)?.0;
     tasks.retain(|x| x.id.to_string().contains(&task_identifier.to_string()));
 
@@ -51,14 +49,26 @@ pub fn mark_task_as(
     }
 
     let mut the_task: Task = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
-    the_task.state_log.push(state);
+    the_task.state_log.push(state.clone());
 
+    let file_path = &task_dir.join(the_task.to_file_name());
     fs_extra::file::write_all(
-        task_dir.join(the_task.to_file_name()),
+        file_path,
         &serde_json::to_string_pretty(&the_task)
             .map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
     )
     .map_err(Error::FileCouldNotBeWrittenTo)?;
+
+    let repo_root = git::repo_root(task_dir.clone()).map_err(Error::GitError)?;
+    git::git_hook(
+        repo_root.as_os_str(),
+        &[file_path.as_os_str()],
+        OsStr::new(&format!(
+            "feat(tasks): change the stated of task {} to {}",
+            the_task.id, state
+        )),
+    )
+    .map_err(Error::GitError)?;
 
     Ok(())
 }
@@ -68,7 +78,7 @@ pub fn todays_task(
     time_range: TimeRange,
     of_project: Option<String>,
     current_time: DateTime<Local>,
-) -> Result<(), Error> {
+) -> Result<()> {
     let today = chrono::Local::now();
     let mut todays_tasks_starting = all_tasks.0.clone();
     todays_tasks_starting.retain(|t| {
@@ -149,7 +159,7 @@ pub fn tasks_by_state<F>(
     task_state_finder: F,
     of_project: Option<String>,
     current_time: DateTime<Local>,
-) -> Result<(), Error>
+) -> Result<()>
 where
     F: Fn(&TaskState) -> bool,
 {

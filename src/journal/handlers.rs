@@ -1,48 +1,68 @@
+use super::Result;
 use crate::files::edit_with_editor;
+use crate::git;
 use crate::journal::entry::{Entry, ToFileName};
 use crate::journal::{Book, Error};
 use color_eyre::owo_colors::OwoColorize;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, FuzzySelect};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
 pub fn new_entry(
     entry: Entry,
     journal_path: &PathBuf,
     at: chrono::DateTime<chrono::Local>,
-) -> Result<(), Error> {
+) -> Result<()> {
     _ = fs_extra::dir::create(journal_path, false).map_err(Error::JournalDirCouldNotBeCreated);
 
-    let file_path = journal_path.join(at.to_file_name());
+    let file_name = at.to_file_name();
+    let file_path = journal_path.join(&file_name);
 
     if file_path.exists() {
         return Err(Error::JournalEntryFileAlreadyExists);
     }
 
     fs_extra::file::write_all(
-        file_path,
+        &file_path,
         &serde_json::to_string_pretty(&entry).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
     )
     .map_err(Error::FileCouldNotBeWrittenTo)?;
 
+    let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
+    git::git_hook(
+        repo_root.as_os_str(),
+        &[file_path.as_os_str()],
+        OsStr::new(&format!("feat(journal): add new journal entry {file_name}")),
+    )
+    .map_err(Error::GitError)?;
+
     Ok(())
 }
-pub fn list_entries(journal_path: &PathBuf) -> Result<(), Error> {
+
+pub fn list_entries(journal_path: &PathBuf) -> Result<()> {
     let book = Book::try_from(journal_path)?;
 
     println!("{}", book.table_list());
 
     Ok(())
 }
-pub fn edit_last_entry(journal_path: &PathBuf, editor: OsString) -> Result<(), Error> {
+
+pub fn edit_last_entry(journal_path: &PathBuf, editor: OsString) -> Result<()> {
     let book = Book::try_from(journal_path)?;
+    let file_name = book.entries.last().ok_or(Error::NoEntries)?.to_file_name();
 
-    let ent_path = journal_path
-        .join(book.entries.last().ok_or(Error::NoEntries)?.to_file_name())
-        .into_os_string();
+    let ent_path = journal_path.join(&file_name).into_os_string();
 
-    edit_with_editor(editor, vec![ent_path]).map_err(Error::EditorFailed)?;
+    edit_with_editor(editor, vec![ent_path.clone()]).map_err(Error::EditorFailed)?;
+
+    let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
+    git::git_hook(
+        repo_root.as_os_str(),
+        &[ent_path.as_os_str()],
+        OsStr::new(&format!("feat(journal): edit the entry {file_name}")),
+    )
+    .map_err(Error::GitError)?;
 
     Ok(())
 }
@@ -51,7 +71,7 @@ pub fn edit_specific_entry(
     journal_path: &PathBuf,
     specifier: String,
     editor: OsString,
-) -> Result<(), Error> {
+) -> Result<()> {
     let book = Book::try_from(journal_path)?;
 
     let ent_path: Vec<PathBuf> = book
@@ -70,9 +90,20 @@ pub fn edit_specific_entry(
     )
     .map_err(Error::EditorFailed)?;
 
+    let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
+    git::git_hook(
+        repo_root.as_os_str(),
+        &[OsStr::new(&format!(
+            "{}/.",
+            journal_path.as_os_str().to_string_lossy()
+        ))],
+        OsStr::new("feat(journal): edit the few entries"),
+    )
+    .map_err(Error::GitError)?;
+
     Ok(())
 }
-pub fn delete_interactive(journal_path: &PathBuf, truncation_amount: usize) -> Result<(), Error> {
+pub fn delete_interactive(journal_path: &PathBuf, truncation_amount: usize) -> Result<()> {
     let book = Book::try_from(journal_path)?;
 
     let options: Vec<String> = book
@@ -120,7 +151,7 @@ pub fn delete_interactive(journal_path: &PathBuf, truncation_amount: usize) -> R
 
     Ok(())
 }
-pub fn edit_all_entries(journal_path: &PathBuf, editor: OsString) -> Result<(), Error> {
+pub fn edit_all_entries(journal_path: &PathBuf, editor: OsString) -> Result<()> {
     let book = Book::try_from(journal_path)?;
 
     let es = book
@@ -132,5 +163,15 @@ pub fn edit_all_entries(journal_path: &PathBuf, editor: OsString) -> Result<(), 
 
     edit_with_editor(editor, es).map_err(Error::EditorFailed)?;
 
+    let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
+    git::git_hook(
+        repo_root.as_os_str(),
+        &[OsStr::new(&format!(
+            "{}/.",
+            journal_path.as_os_str().to_string_lossy()
+        ))],
+        OsStr::new("feat(journal): edit bunch of entries"),
+    )
+    .map_err(Error::GitError)?;
     Ok(())
 }

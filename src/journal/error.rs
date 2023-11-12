@@ -1,4 +1,6 @@
-use crate::files;
+use crate::{files, git};
+
+pub(super) type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -26,6 +28,8 @@ pub enum Error {
     DialoguerError(dialoguer::Error),
     #[error("entry could not be found")]
     EntryCouldNotBeFound,
+    #[error("got error from running git command: {0}")]
+    GitError(git::Error),
 }
 #[cfg(test)]
 mod testing {
