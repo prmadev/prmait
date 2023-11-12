@@ -46,6 +46,14 @@ pub fn push(repo: &OsStr) -> Result<()> {
 
     process_command(process::Command::new(git_command).args(args))
 }
+pub fn pull(repo: &OsStr) -> Result<()> {
+    let git_command: &OsStr = OsStr::new("git");
+    let repo_arg: &OsStr = OsStr::new("-C");
+    let command: &OsStr = OsStr::new("pull");
+    let args = [repo_arg, repo, command];
+
+    process_command(process::Command::new(git_command).args(args))
+}
 
 fn process_command(cmd: &mut process::Command) -> Result<()> {
     if let Some(status) = cmd.status().map_err(Error::CommandCouldNotBeRan)?.code() {
@@ -58,6 +66,7 @@ fn process_command(cmd: &mut process::Command) -> Result<()> {
 pub fn git_hook(repo_root: &OsStr, files: &[&OsStr], commit_message: &OsStr) -> Result<()> {
     add(repo_root, files)?;
     commit(repo_root, commit_message)?;
+    pull(repo_root)?;
     push(repo_root)?;
     Ok(())
 }
