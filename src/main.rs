@@ -119,7 +119,7 @@ fn main() -> Result<()> {
                         projects,
                         start_to_end,
                     };
-                    tasks::handlers::new_task(&config.task_path()?, t)?;
+                    tasks::handlers::new_task(config.task_path()?, t)?;
                 }
                 prmait::input::TaskCommands::List(task_list_command) => match task_list_command {
                     prmait::input::TaskListCommand::Today => {

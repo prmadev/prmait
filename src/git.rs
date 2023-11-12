@@ -55,6 +55,12 @@ fn process_command(cmd: &mut process::Command) -> Result<()> {
     };
     Ok(())
 }
+pub fn git_hook(repo_root: &OsStr, files: &[&OsStr], commit_message: &OsStr) -> Result<()> {
+    add(repo_root, files)?;
+    commit(repo_root, commit_message)?;
+    push(repo_root)?;
+    Ok(())
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

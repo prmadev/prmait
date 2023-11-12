@@ -13,8 +13,8 @@ use super::{
     Error,
 };
 
-pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
-    _ = fs_extra::dir::create(task_dir, false).map_err(Error::DirCouldNotBeCreated);
+pub fn new_task(task_dir: PathBuf, t: Task) -> Result<(), Error> {
+    _ = fs_extra::dir::create(&task_dir, false).map_err(Error::DirCouldNotBeCreated);
 
     let file_path = task_dir.join(t.to_file_name());
 
@@ -27,17 +27,14 @@ pub fn new_task(task_dir: &PathBuf, t: Task) -> Result<(), Error> {
         &serde_json::to_string_pretty(&t).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
     )
     .map_err(Error::FileCouldNotBeWrittenTo)?;
-    let repo_root = git::repo_root(task_dir.to_path_buf())
-        .map_err(Error::GitError)?
-        .into_os_string();
-    git::add(&repo_root, &[&file_path.into_os_string()]).map_err(Error::GitError)?;
-    git::commit(
-        &repo_root,
-        OsStr::new(&format!("feat: new task created {}", t.id)),
+
+    let repo_root = git::repo_root(task_dir).map_err(Error::GitError)?;
+    git::git_hook(
+        repo_root.as_os_str(),
+        &[file_path.as_os_str()],
+        OsStr::new(&format!("feat(tasks): add new task file  {}", t.id)),
     )
     .map_err(Error::GitError)?;
-    git::push(&repo_root).map_err(Error::GitError)?;
-
     Ok(())
 }
 
