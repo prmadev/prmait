@@ -96,6 +96,12 @@ pub fn todays_task(
 
     let mut todays_tasks_deadline: Vec<Task> = all_tasks.0.clone();
     todays_tasks_deadline.retain(|t| {
+        let Some(last) = t.state_log.last() else {
+            return false;
+        };
+        if !matches!(last, TaskState::ToDo(_)) {
+            return false;
+        };
         let Some(deadlined) = t.start_to_end.to else {
             return false;
         };
