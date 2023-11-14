@@ -1,5 +1,5 @@
 use tokio::process::Command;
-use tracing::trace;
+use tracing::{info, trace};
 #[tracing::instrument]
 pub async fn run(
     border_width: i8,
@@ -8,8 +8,7 @@ pub async fn run(
     startup_commands: &Vec<CommandSet>,
     apps: &Apps,
 ) -> Result<(), Error> {
-    trace!("starting");
-    trace!("async: starting tags");
+    info!("starting");
     let border_width_as_string = border_width.to_string();
     let player_pause = format!("{} play-pause", apps.player_ctl);
 
@@ -260,7 +259,15 @@ pub async fn run(
     ]
     .into_iter()
     .map(riverctl);
-    let start_up_handlers = startup_commands.iter().map(command_runner);
+    let start_up_handlers = startup_commands
+        .iter()
+        .cloned()
+        .map(String::from)
+        .map(|x| CommandSet {
+            executible: String::from("riverctl"),
+            args: vec![String::from("spawn"), x],
+        })
+        .map(command_runner);
     tags().await?;
     trace!("defined the tags");
     for handle in handlers {
@@ -275,7 +282,7 @@ pub async fn run(
     Ok(())
 }
 #[tracing::instrument]
-async fn command_runner(cmd: &CommandSet) -> Result<(), Error> {
+async fn command_runner(cmd: CommandSet) -> Result<(), Error> {
     trace!("started runnig a command");
     Command::new(&cmd.executible)
         .args(&cmd.args)
@@ -289,7 +296,7 @@ async fn command_runner(cmd: &CommandSet) -> Result<(), Error> {
 }
 
 async fn riverctl(args: Vec<&str>) -> Result<(), Error> {
-    command_runner(&CommandSet {
+    command_runner(CommandSet {
         executible: "riverctl".to_owned(),
         args: args.into_iter().map(ToOwned::to_owned).collect(),
     })
@@ -400,4 +407,16 @@ pub struct Apps {
 pub struct CommandSet {
     executible: String,
     args: Vec<String>,
+}
+impl From<CommandSet> for String {
+    fn from(value: CommandSet) -> Self {
+        format!(
+            "{} {}",
+            &value.executible,
+            &value
+                .args
+                .into_iter()
+                .fold(String::from(""), |accu, u| accu + " " + &u)
+        )
+    }
 }
