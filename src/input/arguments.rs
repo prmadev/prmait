@@ -15,6 +15,7 @@ pub struct Args {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Commands {
+    River,
     Completions {
         /// The shell to generate the completions for
         #[arg(value_enum)]

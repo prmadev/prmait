@@ -6,13 +6,14 @@ use prmait::tasks::handlers::{mark_task_as, tasks_by_state, todays_task};
 use prmait::tasks::task::{Task, TaskState};
 use prmait::tasks::tasklist::TaskList;
 use prmait::time::TimeRange;
-use prmait::{git, journal, tasks};
+use prmait::{git, journal, river, tasks};
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
-
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     color_eyre::install()?;
+    tracing_subscriber::fmt::init();
 
     let args = Args::parse();
 
@@ -213,6 +214,19 @@ fn main() -> Result<()> {
             },
             prmait::input::Commands::Completions { shell } => {
                 shell.generate(&mut Args::command(), &mut std::io::stdout());
+            }
+            prmait::input::Commands::River => {
+                let river_config = &config
+                    .river
+                    .ok_or(color_eyre::Report::msg("river settings not found"))?;
+                river::run(
+                    river_config.border_width,
+                    &river_config.colors,
+                    &river_config.hardware,
+                    &river_config.startups,
+                    &river_config.apps,
+                )
+                .await?
             }
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

@@ -2,6 +2,7 @@ pub mod files;
 pub mod git;
 pub mod input;
 pub mod journal;
+pub mod river;
 pub mod tasks;
 pub mod time;
 

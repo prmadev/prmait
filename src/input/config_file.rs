@@ -7,6 +7,7 @@ use std::path::PathBuf;
 pub struct Configs {
     pub journal: Option<JournalConfigs>,
     pub task: Option<TaskConfigs>,
+    pub river: Option<RiverConfigs>,
 }
 
 impl TryFrom<PathBuf> for Configs {
@@ -44,6 +45,16 @@ pub struct JournalConfigs {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TaskConfigs {
     pub path: Option<PathBuf>,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RiverConfigs {
+    pub colors: crate::river::Colors,
+    pub hardware: crate::river::Hardware,
+    pub apps: crate::river::Apps,
+    pub startups: Vec<crate::river::CommandSet>,
+    pub border_width: i8,
 }
 
 impl Configs {
