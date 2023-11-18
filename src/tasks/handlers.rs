@@ -1,9 +1,9 @@
-use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
 
+use crate::effects::{CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts};
 use crate::time::TimeRange;
 use crate::{files::ToFileName, git};
 
@@ -14,30 +14,38 @@ use super::{
     Error,
 };
 
-pub fn new_task(task_dir: PathBuf, t: Task) -> Result<()> {
-    _ = fs_extra::dir::create(&task_dir, false).map_err(Error::DirCouldNotBeCreated);
-
+pub fn new_task(task_dir: PathBuf, t: Task) -> Result<EffectMachine> {
     let file_path = task_dir.join(t.to_file_name());
+    let mut effects = EffectMachine::default();
 
-    if file_path.exists() {
-        return Err(Error::TaskFileAlreadyExists);
-    }
+    effects.add(
+        EffectKind::CreateDir(CreateDirOpts {
+            folder_path: task_dir.clone(),
+            ok_if_exists: true,
+        }),
+        false,
+    );
+    effects.add(
+        EffectKind::WriteToFile(FileWriterOpts {
+            content: serde_json::to_string_pretty(&t)
+                .map_err(Error::FileCouldNotSerializeEntryIntoJson)?
+                .into_bytes(),
 
-    fs_extra::file::write_all(
-        &file_path,
-        &serde_json::to_string_pretty(&t).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
-    )
-    .map_err(Error::FileCouldNotBeWrittenTo)?;
-
-    let repo_root = git::repo_root(task_dir).map_err(Error::GitError)?;
-    git::git_hook(
-        repo_root.as_os_str(),
-        &[file_path.as_os_str()],
-        OsStr::new(&format!("feat(tasks): add new task file  {}", t.id)),
-    )
-    .map_err(Error::GitError)?;
-
-    Ok(())
+            file_path: file_path.clone(),
+            can_create: true,
+            can_overwrite: false,
+        }),
+        false,
+    );
+    effects.add(
+        EffectKind::GitHook(crate::effects::GitHookOpts {
+            start_path: task_dir,
+            files_to_add: vec![file_path],
+            message: format!("feat(tasks): add new task file  {}", t.id),
+        }),
+        true,
+    );
+    Ok(effects)
 }
 
 pub fn mark_task_as(task_dir: &PathBuf, state: TaskState, task_identifier: i64) -> Result<()> {
@@ -61,12 +69,12 @@ pub fn mark_task_as(task_dir: &PathBuf, state: TaskState, task_identifier: i64) 
 
     let repo_root = git::repo_root(task_dir.clone()).map_err(Error::GitError)?;
     git::git_hook(
-        repo_root.as_os_str(),
-        &[file_path.as_os_str()],
-        OsStr::new(&format!(
+        repo_root.as_os_str().to_os_string(),
+        vec![file_path.as_os_str().to_os_string()],
+        &format!(
             "feat(tasks): change the stated of task {} to {}",
             the_task.id, state
-        )),
+        ),
     )
     .map_err(Error::GitError)?;
 

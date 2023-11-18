@@ -120,7 +120,8 @@ async fn main() -> Result<()> {
                         projects,
                         start_to_end,
                     };
-                    tasks::handlers::new_task(config.task_path()?, t)?;
+                    let efs = tasks::handlers::new_task(config.task_path()?, t)?;
+                    efs.run()?;
                 }
                 prmait::input::TaskCommands::List(task_list_command) => match task_list_command {
                     prmait::input::TaskListCommand::Today => {

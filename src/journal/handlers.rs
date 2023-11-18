@@ -31,9 +31,9 @@ pub fn new_entry(
 
     let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
     git::git_hook(
-        repo_root.as_os_str(),
-        &[file_path.as_os_str()],
-        OsStr::new(&format!("feat(journal): add new journal entry {file_name}")),
+        repo_root.as_os_str().to_os_string(),
+        vec![file_path.as_os_str().to_os_string()],
+        &format!("feat(journal): add new journal entry {file_name}"),
     )
     .map_err(Error::GitError)?;
 
@@ -58,9 +58,9 @@ pub fn edit_last_entry(journal_path: &PathBuf, editor: OsString) -> Result<()> {
 
     let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
     git::git_hook(
-        repo_root.as_os_str(),
-        &[ent_path.as_os_str()],
-        OsStr::new(&format!("feat(journal): edit the entry {file_name}")),
+        repo_root.as_os_str().to_os_string(),
+        vec![ent_path.as_os_str().to_os_string()],
+        &format!("feat(journal): edit the entry {file_name}"),
     )
     .map_err(Error::GitError)?;
 
@@ -92,12 +92,11 @@ pub fn edit_specific_entry(
 
     let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
     git::git_hook(
-        repo_root.as_os_str(),
-        &[OsStr::new(&format!(
-            "{}/.",
-            journal_path.as_os_str().to_string_lossy()
-        ))],
-        OsStr::new("feat(journal): edit the few entries"),
+        repo_root.as_os_str().to_os_string(),
+        vec![
+            OsStr::new(&format!("{}/.", journal_path.as_os_str().to_string_lossy())).to_os_string(),
+        ],
+        "feat(journal): edit the few entries",
     )
     .map_err(Error::GitError)?;
 
@@ -165,12 +164,11 @@ pub fn edit_all_entries(journal_path: &PathBuf, editor: OsString) -> Result<()> 
 
     let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
     git::git_hook(
-        repo_root.as_os_str(),
-        &[OsStr::new(&format!(
-            "{}/.",
-            journal_path.as_os_str().to_string_lossy()
-        ))],
-        OsStr::new("feat(journal): edit bunch of entries"),
+        repo_root.as_os_str().to_os_string(),
+        vec![
+            OsStr::new(&format!("{}/.", journal_path.as_os_str().to_string_lossy())).to_os_string(),
+        ],
+        "feat(journal): edit bunch of entries",
     )
     .map_err(Error::GitError)?;
     Ok(())
