@@ -6,7 +6,6 @@ sources:
 packages:
   - nixpkgs.cargo
   - nixpkgs.cargo-nextest
-  - nixpkgs.cargo-clippy
 
 repositories:
   nixpkgs: https://nixos.org/channels/nixpkgs-unstable 
