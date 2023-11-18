@@ -4,9 +4,9 @@ environment:
 sources:
   - https://git.sr.ht/~prma/prmait
 packages:
-  - nixos.cargo
-  - nixos.cargo-nextest
-  - nixos.cargo-clippy
+  - nixpkgs.cargo
+  - nixpkgs.cargo-nextest
+  - nixpkgs.cargo-clippy
   
 tasks: 
   - check: |
