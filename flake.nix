@@ -18,6 +18,11 @@
         flake-utils.follows = "flake-utils";
       };
     };
+
+    advisory-db = {
+      url = "github:rustsec/advisory-db";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -25,6 +30,7 @@
     crane,
     flake-utils,
     rust-overlay,
+    advisory-db,
     ...
   }:
     flake-utils.lib.eachSystem ["x86_64-linux"] (system: let
@@ -32,13 +38,31 @@
         inherit system;
         overlays = [(import rust-overlay)];
       };
+      inherit (pkgs) lib;
+      src = craneLib.cleanCargoSource (craneLib.path ./.);
+      commonArgs = {
+        inherit src;
+        strictDeps = true;
 
+        buildInputs =
+          [
+            # Add additional build inputs here
+          ]
+          ++ lib.optionals pkgs.stdenv.isDarwin [
+            # Additional darwin specific inputs can be set here
+            pkgs.libiconv
+          ];
+
+        # Additional environment variables can be set directly
+        # MY_CUSTOM_VAR = "some value";
+      };
       rustToolchain = pkgs.rust-bin.stable.latest.default.override {
         targets = ["x86_64-unknown-linux-musl"];
       };
 
       craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
+      cargoArtifacts = craneLib.buildDepsOnly commonArgs;
       prmait = craneLib.buildPackage {
         src = craneLib.cleanCargoSource (craneLib.path ./.);
         strictDeps = true;
@@ -48,7 +72,43 @@
       };
     in {
       checks = {
-        prmait = prmait;
+        inherit prmait;
+
+        my-crate-clippy = craneLib.cargoClippy (commonArgs
+          // {
+            inherit cargoArtifacts;
+            cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+          });
+
+        my-crate-doc = craneLib.cargoDoc (commonArgs
+          // {
+            inherit cargoArtifacts;
+          });
+
+        # Check formatting
+        my-crate-fmt = craneLib.cargoFmt {
+          inherit src;
+        };
+
+        # Audit dependencies
+        my-crate-audit = craneLib.cargoAudit {
+          inherit src advisory-db;
+        };
+
+        # Audit licenses
+        my-crate-deny = craneLib.cargoDeny {
+          inherit src;
+        };
+
+        # Run tests with cargo-nextest
+        # Consider setting `doCheck = false` on `my-crate` if you do not want
+        # the tests to run twice
+        my-crate-nextest = craneLib.cargoNextest (commonArgs
+          // {
+            inherit cargoArtifacts;
+            partitions = 1;
+            partitionType = "count";
+          });
       };
 
       packages.default = prmait;
