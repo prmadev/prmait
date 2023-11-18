@@ -4,14 +4,18 @@ environment:
 sources:
   - https://git.sr.ht/~prma/prmait
 packages:
-  - nixpkgs.cargo
   - nixpkgs.cargo-nextest
   - nixpkgs.gcc
+  - nixpkgs.rustup
 
 repositories:
   nixpkgs: https://nixos.org/channels/nixpkgs-unstable 
 
 tasks: 
+  - setup: |
+      rustup target add stable-x86_64-unknown-linux-musl
+      rustup default stable-x86_64-unknown-linux-musl
+      rustup toolchain install stable
   - lint: |
       cd prmait
       cargo clippy
