@@ -6,20 +6,21 @@ sources:
 packages:
   - nixpkgs.cargo
   - nixpkgs.cargo-nextest
+  - nixpkgs.glibc
 
 repositories:
   nixpkgs: https://nixos.org/channels/nixpkgs-unstable 
 
 tasks: 
-  - check: |
-      cd prmait
-      ls 
-      nix flake check
-  - test: |
-      cd prmait
-      cargo nextest run
   - lint: |
       cd prmait
       cargo clippy
+  - test: |
+      cd prmait
+      cargo nextest run
+  - check-flake: |
+      cd prmait
+      ls 
+      nix flake check
 
 
