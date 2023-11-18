@@ -3,11 +3,21 @@ environment:
   NIX_CONFIG: "experimental-features = nix-command flakes"
 sources:
   - https://git.sr.ht/~prma/prmait
-
+packages:
+  - cargo
+  - cargo-nextest
+  - cargo-clippy
+  
 tasks: 
   - check: |
       cd prmait
       ls 
       nix flake check
+  - test: |
+      cd prmait
+      cargo nextest run
+  - lint: |
+      cd prmait
+      cargo clippy
 
 
