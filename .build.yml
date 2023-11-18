@@ -1,0 +1,13 @@
+image: nixos/unstable
+environment:
+  NIX_CONFIG: "experimental-features = nix-command flakes"
+sources:
+  - https://git.sr.ht/~prma/prmait
+
+tasks: 
+  - check: |
+      cd prmait
+      ls 
+      nix flake check
+
+
