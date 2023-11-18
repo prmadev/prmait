@@ -6,7 +6,7 @@ sources:
 packages:
   - nixpkgs.cargo
   - nixpkgs.cargo-nextest
-  - nixpkgs.glibc
+  - nixpkgs.gcc
 
 repositories:
   nixpkgs: https://nixos.org/channels/nixpkgs-unstable 
