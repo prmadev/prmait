@@ -194,23 +194,32 @@ async fn main() -> Result<()> {
                 },
                 prmait::input::TaskCommands::Done { id } => {
                     let current = chrono::Local::now();
-                    mark_task_as(&config.task_path()?, TaskState::Done(current), id)?;
+                    let task_dir = config.task_path()?;
+                    let task_list = TaskList::try_from(&task_dir)?;
+                    mark_task_as(task_dir, task_list, TaskState::Done(current), id)?;
                 }
                 prmait::input::TaskCommands::Backlog { id } => {
                     let current = chrono::Local::now();
-                    mark_task_as(&config.task_path()?, TaskState::Backlog(current), id)?;
+                    let task_dir = config.task_path()?;
+                    let task_list = TaskList::try_from(&task_dir)?;
+                    mark_task_as(task_dir, task_list, TaskState::Backlog(current), id)?;
                 }
                 prmait::input::TaskCommands::Abandon { id, content } => {
                     let current = chrono::Local::now();
+                    let task_dir = config.task_path()?;
+                    let task_list = TaskList::try_from(&task_dir)?;
                     mark_task_as(
-                        &config.task_path()?,
+                        task_dir,
+                        task_list,
                         TaskState::Abandoned(current, content),
                         id,
                     )?;
                 }
                 prmait::input::TaskCommands::Todo { id } => {
                     let current = chrono::Local::now();
-                    mark_task_as(&config.task_path()?, TaskState::ToDo(current), id)?;
+                    let task_dir = config.task_path()?;
+                    let task_list = TaskList::try_from(&task_dir)?;
+                    mark_task_as(task_dir, task_list, TaskState::ToDo(current), id)?;
                 }
             },
             prmait::input::Commands::Completions { shell } => {

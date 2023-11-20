@@ -4,8 +4,8 @@ use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
 
 use crate::effects::{CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts};
+use crate::files::ToFileName;
 use crate::time::TimeRange;
-use crate::{files::ToFileName, git};
 
 use super::Result;
 use super::{
@@ -48,8 +48,14 @@ pub fn new_task(task_dir: PathBuf, t: Task) -> Result<EffectMachine> {
     Ok(effects)
 }
 
-pub fn mark_task_as(task_dir: &PathBuf, state: TaskState, task_identifier: i64) -> Result<()> {
-    let mut tasks = TaskList::try_from(task_dir)?.0;
+pub fn mark_task_as(
+    task_dir: PathBuf,
+    tasks_list: TaskList,
+    state: TaskState,
+    task_identifier: i64,
+) -> Result<EffectMachine> {
+    let mut effects = EffectMachine::default();
+    let mut tasks = tasks_list.0;
     tasks.retain(|x| x.id.to_string().contains(&task_identifier.to_string()));
 
     if tasks.len() > 1 {
@@ -59,26 +65,32 @@ pub fn mark_task_as(task_dir: &PathBuf, state: TaskState, task_identifier: i64) 
     let mut the_task: Task = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
     the_task.state_log.push(state.clone());
 
-    let file_path = &task_dir.join(the_task.to_file_name());
-    fs_extra::file::write_all(
-        file_path,
-        &serde_json::to_string_pretty(&the_task)
-            .map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
-    )
-    .map_err(Error::FileCouldNotBeWrittenTo)?;
+    let file_path = task_dir.join(the_task.to_file_name());
+    let new_file_content = serde_json::to_string_pretty(&the_task)
+        .map_err(Error::FileCouldNotSerializeEntryIntoJson)?
+        .into_bytes();
+    effects.add(
+        EffectKind::WriteToFile(FileWriterOpts {
+            content: new_file_content,
+            file_path: file_path.clone(),
+            can_create: false,
+            can_overwrite: true,
+        }),
+        false,
+    );
+    effects.add(
+        EffectKind::GitHook(crate::effects::GitHookOpts {
+            start_path: task_dir,
+            files_to_add: vec![file_path],
+            message: format!(
+                "feat: updated task {} to the new state {}",
+                the_task.id, state,
+            ),
+        }),
+        true,
+    );
 
-    let repo_root = git::repo_root(task_dir.clone()).map_err(Error::GitError)?;
-    git::git_hook(
-        repo_root.as_os_str().to_os_string(),
-        vec![file_path.as_os_str().to_os_string()],
-        &format!(
-            "feat(tasks): change the stated of task {} to {}",
-            the_task.id, state
-        ),
-    )
-    .map_err(Error::GitError)?;
-
-    Ok(())
+    Ok(effects)
 }
 
 pub fn todays_task(
