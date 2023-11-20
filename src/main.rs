@@ -196,30 +196,35 @@ async fn main() -> Result<()> {
                     let current = chrono::Local::now();
                     let task_dir = config.task_path()?;
                     let task_list = TaskList::try_from(&task_dir)?;
-                    mark_task_as(task_dir, task_list, TaskState::Done(current), id)?;
+                    let effects = mark_task_as(task_dir, task_list, TaskState::Done(current), id)?;
+                    effects.run()?;
                 }
                 prmait::input::TaskCommands::Backlog { id } => {
                     let current = chrono::Local::now();
                     let task_dir = config.task_path()?;
                     let task_list = TaskList::try_from(&task_dir)?;
-                    mark_task_as(task_dir, task_list, TaskState::Backlog(current), id)?;
+                    let effects =
+                        mark_task_as(task_dir, task_list, TaskState::Backlog(current), id)?;
+                    effects.run()?;
                 }
                 prmait::input::TaskCommands::Abandon { id, content } => {
                     let current = chrono::Local::now();
                     let task_dir = config.task_path()?;
                     let task_list = TaskList::try_from(&task_dir)?;
-                    mark_task_as(
+                    let effects = mark_task_as(
                         task_dir,
                         task_list,
                         TaskState::Abandoned(current, content),
                         id,
                     )?;
+                    effects.run()?;
                 }
                 prmait::input::TaskCommands::Todo { id } => {
                     let current = chrono::Local::now();
                     let task_dir = config.task_path()?;
                     let task_list = TaskList::try_from(&task_dir)?;
-                    mark_task_as(task_dir, task_list, TaskState::ToDo(current), id)?;
+                    let effects = mark_task_as(task_dir, task_list, TaskState::ToDo(current), id)?;
+                    effects.run()?;
                 }
             },
             prmait::input::Commands::Completions { shell } => {
