@@ -57,6 +57,12 @@ pub fn mark_task_as(
     let mut effects = EffectMachine::default();
     let mut tasks = tasks_list.0;
     tasks.retain(|x| x.id.to_string().contains(&task_identifier.to_string()));
+    tasks.retain(|x| {
+        let Some(last_state) = x.state_log.last() else {
+            return false;
+        };
+        last_state.ne(&state)
+    });
 
     if tasks.len() > 1 {
         return Err(Error::MoreThanOneTaskWasFound(Box::new(tasks)));
