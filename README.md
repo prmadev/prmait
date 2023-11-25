@@ -2,7 +2,7 @@
 
 Let's break it down, shall we?
 
-The gist is to tidy up the script chaos by replacing a bunch of convoluted scripts with neat commands. Forget about scripts like `new-journal-entry.sh`—now we have sleek binary commands like `prmait journal new` and friends.
+The gist is to tidy up the script chaos by replacing a bunch of convoluted scripts with neat commands. Forget about scripts like ``new-journal-entry.sh``—now we have sleek binary commands like ``prmait journal new`` and friends.
 
 ## Why?
 
