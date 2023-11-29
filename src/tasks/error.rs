@@ -17,13 +17,13 @@ pub enum Error {
     #[error("task with that name already exist")]
     TaskFileAlreadyExists,
     #[error("file could not be serialized")]
-    FileCouldNotSerializeEntryIntoJson(serde_json::Error),
+    FileCouldNotSerializeEntryIntoJson(serde_json::Error, String),
     #[error("file could not written to")]
     FileCouldNotBeWrittenTo(fs_extra::error::Error),
     #[error("directory could not be read")]
     DirCouldNotBeRead(fs_extra::error::Error),
-    #[error("file cannot deserialize entry from json string: {0}")]
-    FileCouldNotDeserializeEntryFromJson(serde_json::Error),
+    #[error("file cannot deserialize entry {1} from json string: {0}")]
+    FileCouldNotDeserializeEntryFromJson(serde_json::Error, String),
     #[error("file cannot be read: {0}")]
     FileCouldNotBeRead(fs_extra::error::Error),
     #[error("more than one task with that ID was found: {0:?}")]

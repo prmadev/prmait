@@ -31,7 +31,9 @@ impl TryFrom<PathBuf> for EntryDescription {
             .ok_or(Error::FileNameHasInvalidCharacters)?
             .to_owned();
         Ok(EntryDescription {
-            entry: Entry::try_from(value)?,
+            entry: Entry::try_from(value).map_err(|e| {
+                Error::CouldNotDeserializeEntryFromJson(Box::new(e), file_name.clone())
+            })?,
             file_name,
         })
     }

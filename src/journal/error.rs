@@ -12,10 +12,12 @@ pub enum Error {
     JournalDirCouldNotBeCreated(fs_extra::error::Error),
     #[error("could not create journal directory")]
     JournalEntryFileAlreadyExists,
-    #[error("could serialize entry to json: {0}")]
-    FileCouldNotSerializeEntryIntoJson(serde_json::Error),
-    #[error("could deserialize entry from json: {0}")]
-    FileCouldNotDeserializeEntryFromJson(serde_json::Error),
+    #[error("could serialize entry {1} to json: {0}")]
+    FileCouldNotSerializeEntryIntoJson(serde_json::Error, String),
+    #[error("could deserialize entry {1} from json: {0}")]
+    FileCouldNotDeserializeEntryFromJson(serde_json::Error, String),
+    #[error("could deserialize entry {1} from json: {0}")]
+    CouldNotDeserializeEntryFromJson(Box<Error>, String),
     #[error("could not write entry to file: {0}")]
     FileCouldNotBeWrittenTo(fs_extra::error::Error),
     #[error("could not read directory: {0}")]

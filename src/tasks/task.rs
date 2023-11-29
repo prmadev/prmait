@@ -13,6 +13,7 @@ use super::Error;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Task {
     pub id: i64,
+    #[serde(with = "time::serde::rfc3339")]
     pub time_created: OffsetDateTime,
     pub state_log: Vec<TaskState>,
     pub title: String,
@@ -113,8 +114,8 @@ impl TryFrom<&PathBuf> for Task {
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
         let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let task: Task =
-            serde_json::from_str(&content).map_err(Error::FileCouldNotDeserializeEntryFromJson)?;
+        let task: Task = serde_json::from_str(&content)
+            .map_err(|e| Error::FileCouldNotDeserializeEntryFromJson(e, content))?;
         Ok(task)
     }
 }
@@ -124,8 +125,8 @@ impl TryFrom<PathBuf> for Task {
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let task: Task =
-            serde_json::from_str(&content).map_err(Error::FileCouldNotDeserializeEntryFromJson)?;
+        let task: Task = serde_json::from_str(&content)
+            .map_err(|e| Error::FileCouldNotDeserializeEntryFromJson(e, content))?;
         Ok(task)
     }
 }
@@ -159,10 +160,13 @@ impl ToFileName for Task {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TaskState {
-    Backlog(OffsetDateTime),
-    Abandoned(OffsetDateTime, Option<String>),
-    Done(OffsetDateTime),
-    ToDo(OffsetDateTime),
+    Backlog(#[serde(with = "time::serde::rfc3339")] OffsetDateTime),
+    Abandoned(
+        #[serde(with = "time::serde::rfc3339")] OffsetDateTime,
+        Option<String>,
+    ),
+    Done(#[serde(with = "time::serde::rfc3339")] OffsetDateTime),
+    ToDo(#[serde(with = "time::serde::rfc3339")] OffsetDateTime),
 }
 
 // impl Default for TaskState {

@@ -28,7 +28,8 @@ pub fn new_entry(
 
     fs_extra::file::write_all(
         &file_path,
-        &serde_json::to_string_pretty(&entry).map_err(Error::FileCouldNotSerializeEntryIntoJson)?,
+        &serde_json::to_string_pretty(&entry)
+            .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, file_name.clone()))?,
     )
     .map_err(Error::FileCouldNotBeWrittenTo)?;
 

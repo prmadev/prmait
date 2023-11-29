@@ -19,7 +19,8 @@ pub fn new_task(
     t: Task,
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
-    let file_path = task_dir.join(t.to_file_name(time_format_descriptor)?);
+    let file_name = t.to_file_name(time_format_descriptor)?;
+    let file_path = task_dir.join(&file_name);
     let mut effects = EffectMachine::default();
 
     effects.add(
@@ -32,7 +33,7 @@ pub fn new_task(
     effects.add(
         EffectKind::WriteToFile(FileWriterOpts {
             content: serde_json::to_string_pretty(&t)
-                .map_err(Error::FileCouldNotSerializeEntryIntoJson)?
+                .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, file_name))?
                 .into_bytes(),
 
             file_path: file_path.clone(),
@@ -77,7 +78,7 @@ pub fn mark_task_as(
 
     let file_path = task_dir.join(&the_task_description.file_name);
     let new_file_content = serde_json::to_string_pretty(&the_task_description)
-        .map_err(Error::FileCouldNotSerializeEntryIntoJson)?
+        .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, the_task_description.file_name))?
         .into_bytes();
     effects.add(
         EffectKind::WriteToFile(FileWriterOpts {

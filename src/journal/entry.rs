@@ -11,6 +11,7 @@ use super::Error;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Entry {
+    #[serde(with = "time::serde::rfc3339")]
     pub at: OffsetDateTime,
     pub body: Arc<String>,
     pub tag: Vec<String>,
@@ -70,8 +71,8 @@ impl TryFrom<PathBuf> for Entry {
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let entry: Entry =
-            serde_json::from_str(&content).map_err(Error::FileCouldNotDeserializeEntryFromJson)?;
+        let entry: Entry = serde_json::from_str(&content)
+            .map_err(|e| Error::FileCouldNotDeserializeEntryFromJson(e, content))?;
         Ok(entry)
     }
 }
