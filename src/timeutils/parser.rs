@@ -23,7 +23,7 @@ pub fn parse_date(input: &str, offset: UtcOffset) -> Result<Date, Error> {
             TimeUnit::Month(count) => Ok(day_from_today(offset, count as i64 * 30)), // TODO: make this smarter
             TimeUnit::Year(count) => Ok(day_from_today(offset, count as i64 * 365)), // TODO: make this smarter
         },
-        ParserAction::SpecificDate(y, m, d) => Ok(time::Date::from_calendar_date(y.into(), m, d)?),
+        ParserAction::SpecificDate(y, m, d) => Ok(time::Date::from_calendar_date(y, m, d)?),
     }
 }
 

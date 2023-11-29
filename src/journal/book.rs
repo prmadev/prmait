@@ -50,10 +50,7 @@ impl Book {
             .fold(Ok(()), |accu, entry| -> Result<(), Error> {
                 let Ok(()) = accu else { return accu };
                 table.add_row(vec![
-                    Cell::new(format!(
-                        "{}",
-                        entry.entry.at.format(time_format_descriptor)?
-                    ))
+                    Cell::new((entry.entry.at.format(time_format_descriptor)?).to_string())
                     .bg(comfy_table::Color::White)
                     .fg(comfy_table::Color::Black),
                     Cell::new(format!("{}", &entry.entry.body)),

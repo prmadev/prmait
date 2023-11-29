@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
             "file name format decriptor for journal must be set",
         ))?;
     let file_format_for_journal =
-        { time::format_description::parse_borrowed::<2>(&journal_file_formatting)? };
+        { time::format_description::parse_borrowed::<2>(journal_file_formatting)? };
     let task_file_formatting = &config
         .task
         .clone()

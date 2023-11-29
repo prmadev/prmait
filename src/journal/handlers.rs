@@ -58,7 +58,7 @@ pub fn edit_last_entry(journal_path: &PathBuf, editor: OsString) -> Result<()> {
     let book = Book::try_from(journal_path)?;
     let file_name = &book.entries.last().ok_or(Error::NoEntries)?.file_name;
 
-    let ent_path = journal_path.join(&file_name).into_os_string();
+    let ent_path = journal_path.join(file_name).into_os_string();
 
     edit_with_editor(editor, vec![ent_path.clone()]).map_err(Error::EditorFailed)?;
 
