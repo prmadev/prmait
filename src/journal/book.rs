@@ -47,12 +47,11 @@ impl Book {
         table.set_content_arrangement(ContentArrangement::Dynamic);
         self.entries
             .iter()
-            .fold(Ok(()), |accu, entry| -> Result<(), Error> {
-                let Ok(()) = accu else { return accu };
+            .try_fold((), |_, entry| -> Result<(), Error> {
                 table.add_row(vec![
                     Cell::new((entry.entry.at.format(time_format_descriptor)?).to_string())
-                    .bg(comfy_table::Color::White)
-                    .fg(comfy_table::Color::Black),
+                        .bg(comfy_table::Color::White)
+                        .fg(comfy_table::Color::Black),
                     Cell::new(format!("{}", &entry.entry.body)),
                     Cell::new(&entry.file_name).fg(comfy_table::Color::Blue),
                     if entry.entry.tag.is_empty() {
