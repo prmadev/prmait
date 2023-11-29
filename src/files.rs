@@ -2,6 +2,8 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Command;
 
+use time::formatting::Formattable;
+
 #[allow(clippy::ptr_arg)] // the whole function is just to here for making it easier to read
 pub fn is_json(p: &PathBuf) -> bool {
     match p.extension() {
@@ -28,5 +30,9 @@ pub enum Error {
 }
 
 pub trait ToFileName {
-    fn to_file_name(&self) -> String;
+    type Error;
+    fn to_file_name(
+        &self,
+        time_format_descriptor: &(impl Formattable + ?Sized),
+    ) -> Result<String, Self::Error>;
 }

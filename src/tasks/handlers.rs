@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
+use time::formatting::Formattable;
+use time::{Date, OffsetDateTime};
 
 use crate::effects::{CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts};
 use crate::files::ToFileName;
-use crate::time::TimeRange;
 
 use super::Result;
 use super::{
@@ -14,8 +14,12 @@ use super::{
     Error,
 };
 
-pub fn new_task(task_dir: PathBuf, t: Task) -> Result<EffectMachine> {
-    let file_path = task_dir.join(t.to_file_name());
+pub fn new_task(
+    task_dir: PathBuf,
+    t: Task,
+    time_format_descriptor: &(impl Formattable + ?Sized),
+) -> Result<EffectMachine> {
+    let file_path = task_dir.join(t.to_file_name(time_format_descriptor)?);
     let mut effects = EffectMachine::default();
 
     effects.add(
@@ -56,9 +60,9 @@ pub fn mark_task_as(
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
     let mut tasks = tasks_list.0;
-    tasks.retain(|x| x.id.to_string().contains(&task_identifier.to_string()));
+    tasks.retain(|x| x.task.id.to_string().contains(&task_identifier.to_string()));
     tasks.retain(|x| {
-        let Some(last_state) = x.state_log.last() else {
+        let Some(last_state) = x.task.state_log.last() else {
             return false;
         };
         last_state.ne(&state)
@@ -68,11 +72,11 @@ pub fn mark_task_as(
         return Err(Error::MoreThanOneTaskWasFound(Box::new(tasks)));
     }
 
-    let mut the_task: Task = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
-    the_task.state_log.push(state.clone());
+    let mut the_task_description = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
+    the_task_description.task.state_log.push(state.clone());
 
-    let file_path = task_dir.join(the_task.to_file_name());
-    let new_file_content = serde_json::to_string_pretty(&the_task)
+    let file_path = task_dir.join(&the_task_description.file_name);
+    let new_file_content = serde_json::to_string_pretty(&the_task_description)
         .map_err(Error::FileCouldNotSerializeEntryIntoJson)?
         .into_bytes();
     effects.add(
@@ -90,7 +94,7 @@ pub fn mark_task_as(
             files_to_add: vec![file_path],
             message: format!(
                 "feat: updated task {} to the new state {}",
-                the_task.id, state,
+                the_task_description.task.id, state,
             ),
         }),
         true,
@@ -101,63 +105,54 @@ pub fn mark_task_as(
 
 pub fn todays_task(
     all_tasks: TaskList,
-    time_range: TimeRange,
+    current_date: Date,
     of_project: Option<String>,
-    current_time: DateTime<Local>,
+    current_time: OffsetDateTime,
+    time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<()> {
-    let today = chrono::Local::now();
     let mut todays_tasks_starting = all_tasks.0.clone();
     todays_tasks_starting.retain(|t| {
-        let Some(last) = t.state_log.last() else {
+        let Some(last) = t.task.state_log.last() else {
             return false;
         };
         if !matches!(last, TaskState::ToDo(_)) {
             return false;
         };
-        let Some(bst) = t.start_to_end.from else {
+        let Some(bst) = t.task.start else {
             return false;
         };
-        time_range.intersects_with(bst)
+        current_date.eq(&bst)
     });
 
-    let mut todays_tasks_deadline: Vec<Task> = all_tasks.0.clone();
+    let mut todays_tasks_deadline = all_tasks.0.clone();
     todays_tasks_deadline.retain(|t| {
-        let Some(last) = t.state_log.last() else {
+        let Some(last) = t.task.state_log.last() else {
             return false;
         };
         if !matches!(last, TaskState::ToDo(_)) {
             return false;
         };
-        let Some(deadlined) = t.start_to_end.to else {
+        let Some(deadlined) = t.task.end else {
             return false;
         };
-        if !time_range.intersects_with(deadlined) {
+        if !current_date.eq(&deadlined) {
             return false;
         }
         let Some(proj) = &of_project else { return true };
-        t.projects.contains(proj)
+        t.task.projects.contains(proj)
     });
 
-    let mut todays_tasks_overdue: Vec<Task> = all_tasks.0;
+    let mut todays_tasks_overdue = all_tasks.0;
     todays_tasks_overdue.retain(|t| {
-        let Some(deadlined) = t.start_to_end.to else {
+        let Some(deadlined) = t.task.end else {
             return false;
         };
-        if !time_range.is_after(deadlined) {
+        if !current_date.gt(&deadlined) {
             return false;
         };
         let Some(proj) = &of_project else { return true };
-        t.projects.contains(proj)
+        t.task.projects.contains(proj)
     });
-
-    println!();
-    println!(
-        "{}",
-        format!("Date Today: {}", today.format("%Y-%m-%d"))
-            .bold()
-            .black()
-            .on_cyan()
-    );
 
     if !todays_tasks_starting.is_empty() {
         println!();
@@ -167,38 +162,66 @@ pub fn todays_task(
         );
         todays_tasks_starting
             .iter()
-            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+            .map(|x| {
+                try_print_colorful_with_current_duration(
+                    &x.task,
+                    current_time,
+                    time_format_descriptor,
+                )
+            })
+            .for_each(println_ok_or_eprintln);
     }
     if !todays_tasks_deadline.is_empty() {
         println!();
         println!("{:61}", "Deadline at today:".bold().black().on_red());
         todays_tasks_deadline
             .iter()
-            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+            .map(|x| {
+                try_print_colorful_with_current_duration(
+                    &x.task,
+                    current_time,
+                    time_format_descriptor,
+                )
+            })
+            .for_each(println_ok_or_eprintln);
     }
     if !todays_tasks_overdue.is_empty() {
         println!();
         println!("{:61}", "overdue at today:".bold().black().on_red());
         todays_tasks_deadline
             .iter()
-            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+            .map(|x| {
+                try_print_colorful_with_current_duration(
+                    &x.task,
+                    current_time,
+                    time_format_descriptor,
+                )
+            })
+            .for_each(println_ok_or_eprintln);
     }
 
     Ok(())
+}
+
+fn println_ok_or_eprintln(x: Result<String>) {
+    match x {
+        Ok(f) => println!("{f}"),
+        Err(e) => eprintln!("{e}"),
+    }
 }
 pub fn tasks_by_state<F>(
     all_tasks: TaskList,
     task_state_finder: F,
     of_project: Option<String>,
-    current_time: DateTime<Local>,
+    current_time: OffsetDateTime,
+    time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<()>
 where
     F: Fn(&TaskState) -> bool,
 {
-    let today = chrono::Local::now();
-    let mut chosen_tasks: Vec<Task> = all_tasks.0;
-    chosen_tasks.retain(|task| {
-        let Some(last) = task.state_log.last() else {
+    let mut chosen_tasks = all_tasks.0;
+    chosen_tasks.retain(|task_description| {
+        let Some(last) = task_description.task.state_log.last() else {
             return false;
         };
         if !task_state_finder(last) {
@@ -207,14 +230,10 @@ where
         let Some(proj) = &of_project else {
             return true;
         };
-        task.projects.contains(proj)
+        task_description.task.projects.contains(proj)
     });
 
     if !chosen_tasks.is_empty() {
-        println!();
-        println!("{}", today_formatted(today));
-        println!();
-
         println!(
             "{:61}",
             "tasks with that criteria:".bold().black().on_bright_blue()
@@ -222,15 +241,26 @@ where
 
         chosen_tasks
             .iter()
-            .for_each(|x| println!("\n{}", x.print_colorful_with_current_duration(current_time)));
+            .map(|x| {
+                try_print_colorful_with_current_duration(
+                    &x.task,
+                    current_time,
+                    time_format_descriptor,
+                )
+            })
+            .for_each(println_ok_or_eprintln);
     }
 
     Ok(())
 }
-fn today_formatted(today: chrono::DateTime<Local>) -> String {
-    format!("Date Today: {}", today.format("%Y-%m-%d"))
-        .bold()
-        .black()
-        .on_cyan()
-        .to_string()
+
+fn try_print_colorful_with_current_duration(
+    x: &Task,
+    current_time: OffsetDateTime,
+    time_format_descriptor: &(impl Formattable + ?Sized),
+) -> std::result::Result<String, Error> {
+    Ok(format!(
+        "\n{}",
+        x.print_colorful_with_current_duration(current_time, time_format_descriptor)?
+    ))
 }

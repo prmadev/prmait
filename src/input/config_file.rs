@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Configs {
+    pub time_offset: Option<(i8, i8, i8)>,
     pub journal: Option<JournalConfigs>,
     pub task: Option<TaskConfigs>,
     pub river: Option<RiverConfigs>,
@@ -40,11 +41,13 @@ pub enum ConfigErr {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct JournalConfigs {
     pub path: Option<PathBuf>,
+    pub file_name_format: Option<String>,
 }
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TaskConfigs {
     pub path: Option<PathBuf>,
+    pub file_name_format: Option<String>,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

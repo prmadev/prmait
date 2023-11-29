@@ -4,6 +4,10 @@ pub(super) type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("could not format to file name:{0}")]
+    CouldNotFormatToFileName(#[from] time::error::Format),
+    #[error("invalid time format for file name:{0}")]
+    CouldNotParseTimeFormatDescription(#[from] time::error::InvalidFormatDescription),
     #[error("could not create journal directory")]
     JournalDirCouldNotBeCreated(fs_extra::error::Error),
     #[error("could not create journal directory")]
@@ -30,6 +34,10 @@ pub enum Error {
     EntryCouldNotBeFound,
     #[error("got error from running git command: {0}")]
     GitError(git::Error),
+    #[error("file name has invalid characters")]
+    FileNameHasInvalidCharacters,
+    #[error("the path is not a file")]
+    IsNotAFile,
 }
 #[cfg(test)]
 mod testing {

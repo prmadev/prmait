@@ -1,38 +1,40 @@
 use std::{fmt::Display, ops::Sub, path::PathBuf, str::FromStr};
 
-use chrono::{DateTime, Local};
 use color_eyre::owo_colors::OwoColorize;
+use time::{formatting::Formattable, Date, OffsetDateTime};
 
-use crate::{files::ToFileName, time::TimeRange};
+use crate::files::ToFileName;
 
-use super::{Error, FILE_NAME_FORMAT};
+use super::Error;
 
-const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M";
+// const DATE_DISPLAY_FORMATTING: &str = "%Y-%m-%d %H:%M";
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Task {
     pub id: i64,
-    pub time_created: DateTime<Local>,
+    pub time_created: OffsetDateTime,
     pub state_log: Vec<TaskState>,
     pub title: String,
     pub description: Option<String>,
     pub area: Option<Area>,
     pub people: Vec<String>,
     pub projects: Vec<String>,
-    pub start_to_end: TimeRange,
+    pub start: Option<Date>,
+    pub end: Option<Date>,
 }
 
 impl Task {
     pub fn print_colorful_with_current_duration(
         &self,
-        current_time: chrono::DateTime<Local>,
-    ) -> String {
+        current_time: OffsetDateTime,
+        time_format_description: &(impl Formattable + ?Sized),
+    ) -> Result<String, Error> {
         let mut all_buf = String::new();
         all_buf.push_str(&format!(
             "{}\t{} {}",
             self.current_state()
-                .expect("every task should have a current_state")
+                .ok_or(Error::EveryTaskShouldHaveAtLeastOneState)?
                 .black()
                 .on_magenta(),
             "⍙".bright_black(),
@@ -71,22 +73,22 @@ impl Task {
 
         all_buf.push_str(&{
             let mut buf = String::new();
-            if let Some(at) = self.start_to_end.from {
+            if let Some(at) = self.start {
                 buf.push_str(&format!(
                     "{}",
-                    at.format(DATE_DISPLAY_FORMATTING).italic().bright_black()
+                    at.format(time_format_description)?.italic().bright_black()
                 ));
             };
             buf.push_str(&format!("{}", " ⇰ ".bright_black().bold()));
-            if let Some(at) = self.start_to_end.to {
-                let until = at.sub(current_time);
+            if let Some(at) = self.end {
+                let until = at.sub(current_time.date());
                 buf.push_str(&format!(
                     "{}",
-                    at.format(DATE_DISPLAY_FORMATTING).italic().bright_black()
+                    at.format(time_format_description)?.italic().bright_black()
                 ));
                 buf.push_str(&format!(
                     "{}",
-                    format!(" ◕ {}d{}h", until.num_days(), until.num_hours())
+                    format!(" ◕ {}d{}h", until.whole_days(), until.whole_hours())
                         .bright_black()
                         .bold()
                 ));
@@ -95,7 +97,7 @@ impl Task {
             buf
         });
 
-        all_buf
+        Ok(all_buf)
     }
 }
 
@@ -105,6 +107,17 @@ impl Task {
     }
 }
 
+impl TryFrom<&PathBuf> for Task {
+    type Error = Error;
+
+    fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
+        let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
+
+        let task: Task =
+            serde_json::from_str(&content).map_err(Error::FileCouldNotDeserializeEntryFromJson)?;
+        Ok(task)
+    }
+}
 impl TryFrom<PathBuf> for Task {
     type Error = Error;
 
@@ -117,41 +130,46 @@ impl TryFrom<PathBuf> for Task {
     }
 }
 impl ToFileName for Task {
-    fn to_file_name(&self) -> String {
-        self.time_created.format(FILE_NAME_FORMAT).to_string()
+    type Error = Error;
+
+    fn to_file_name(
+        &self,
+        time_format_descriptor: &(impl Formattable + ?Sized),
+    ) -> Result<String, Self::Error> {
+        Ok(self.time_created.format(time_format_descriptor)?)
     }
 }
-impl Default for Task {
-    fn default() -> Self {
-        let now = Local::now();
-        Self {
-            id: now.timestamp(),
-            state_log: vec![TaskState::default()],
-            title: "".to_owned(),
-            description: None,
-            area: None,
-            people: vec![],
-            projects: vec![],
-            time_created: now,
-            start_to_end: TimeRange::build(None, None).unwrap(), // It should never return errors
-                                                                 // with these values.
-        }
-    }
-}
+// impl Default for Task {
+//     fn default() -> Self {
+//         let now = Local::now();
+//         Self {
+//             id: now.timestamp(),
+//             state_log: vec![TaskState::default()],
+//             title: "".to_owned(),
+//             description: None,
+//             area: None,
+//             people: vec![],
+//             projects: vec![],
+//             time_created: now,
+//             start_to_end: TimeRange::build(None, None).unwrap(), // It should never return errors
+//                                                                  // with these values.
+//         }
+//     }
+// }
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TaskState {
-    Backlog(DateTime<Local>),
-    Abandoned(DateTime<Local>, Option<String>),
-    Done(DateTime<Local>),
-    ToDo(DateTime<Local>),
+    Backlog(OffsetDateTime),
+    Abandoned(OffsetDateTime, Option<String>),
+    Done(OffsetDateTime),
+    ToDo(OffsetDateTime),
 }
 
-impl Default for TaskState {
-    fn default() -> Self {
-        Self::ToDo(Local::now())
-    }
-}
+// impl Default for TaskState {
+//     fn default() -> Self {
+//         Self::ToDo(Local::now())
+//     }
+// }
 impl Display for TaskState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

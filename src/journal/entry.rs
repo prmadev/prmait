@@ -1,15 +1,17 @@
 use std::{fmt::Display, path::PathBuf, sync::Arc};
 
-use chrono::{DateTime, Local};
 use clap::ValueEnum;
 use color_eyre::owo_colors::OwoColorize;
+use time::{formatting::Formattable, OffsetDateTime};
+
+use crate::files::ToFileName;
 
 use super::Error;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Entry {
-    pub at: DateTime<Local>,
+    pub at: OffsetDateTime,
     pub body: Arc<String>,
     pub tag: Vec<String>,
     pub mood: Mood,
@@ -39,11 +41,15 @@ impl Display for Mood {
     }
 }
 
-const FILE_NAME_FORMAT: &str = "%Y-%m-%d-%H-%M-%S.json";
+// const FILE_NAME_FORMAT: &str = "[year]-[month]-[day]-[hour]-[minute]-[second].json";
 
 impl ToFileName for Entry {
-    fn to_file_name(&self) -> String {
-        self.at.format(FILE_NAME_FORMAT).to_string()
+    type Error = Error;
+    fn to_file_name(
+        &self,
+        time_format_descriptor_for_file_name: &(impl Formattable + ?Sized),
+    ) -> Result<String, Self::Error> {
+        Ok(self.at.format(time_format_descriptor_for_file_name)?)
     }
 }
 
@@ -70,22 +76,24 @@ impl TryFrom<PathBuf> for Entry {
     }
 }
 
-pub trait ToFileName {
-    fn to_file_name(&self) -> String;
-}
-
-impl ToFileName for DateTime<Local> {
-    fn to_file_name(&self) -> String {
-        self.format(FILE_NAME_FORMAT).to_string()
+impl ToFileName for OffsetDateTime {
+    type Error = Error;
+    fn to_file_name(
+        &self,
+        time_format_descriptor: &(impl Formattable + ?Sized),
+    ) -> Result<String, Self::Error> {
+        Ok(self.format(time_format_descriptor)?)
     }
 }
-impl Display for Entry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Entry {
+    pub fn pretty_formated(
+        &self,
+        time_format_descriptor_for_display: &(impl Formattable + ?Sized),
+    ) -> Result<String, Error> {
         let date = format!(
             "{}",
             self.at
-                .format(crate::time::DATE_DISPLAY_FORMATTING)
-                .to_string()
+                .format(&time_format_descriptor_for_display)?
                 .dimmed()
         );
 
@@ -99,7 +107,7 @@ impl Display for Entry {
             })
         };
 
-        write!(f, "{date}\n{body}\n{tags}")
+        Ok(format!("{date}\n{body}\n{tags}"))
     }
 }
 
