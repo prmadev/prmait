@@ -49,7 +49,8 @@ async fn main() -> Result<()> {
 
     match args.command {
         Some(general_command) => match general_command {
-            prmait::input::Commands::Journal { journal_command } => match journal_command {
+            prmait::input::Commands::J { journal_command }
+            | prmait::input::Commands::Journal { journal_command } => match journal_command {
                 prmait::input::JournalCommands::New {
                     entry,
                     tag,
@@ -94,7 +95,8 @@ async fn main() -> Result<()> {
                 )?,
             },
 
-            prmait::input::Commands::Task { task_command } => {
+            prmait::input::Commands::T { task_command }
+            | prmait::input::Commands::Task { task_command } => {
                 let task_dir = config.task_path()?;
                 let project = git::repo_root(std::env::current_dir()?)
                     .map(git::repo_directory_name)
@@ -234,6 +236,21 @@ async fn main() -> Result<()> {
                     &river_config.apps,
                 )
                 .await?
+            }
+            prmait::input::Commands::Tasks => {
+                let task_dir = config.task_path()?;
+                let tasklist = TaskList::try_from(&task_dir)?;
+                let project = git::repo_root(std::env::current_dir()?)
+                    .map(git::repo_directory_name)
+                    .ok()
+                    .and_then(Result::ok);
+                tasks_by_state(
+                    tasklist,
+                    |x| matches!(x, &TaskState::ToDo(_)),
+                    project,
+                    now,
+                    &well_known::Rfc3339,
+                )?;
             }
         },
         None => unreachable!("because of clap, it should not be possible to reach this point"),

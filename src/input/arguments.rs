@@ -22,10 +22,22 @@ pub enum Commands {
         shell: clap_complete_command::Shell,
     },
     /// Journaling
+    J {
+        /// journal commands
+        #[command(subcommand)]
+        journal_command: JournalCommands,
+    },
+    /// Journaling
     Journal {
         /// journal commands
         #[command(subcommand)]
         journal_command: JournalCommands,
+    },
+    /// Task Management
+    T {
+        /// task commands
+        #[command(subcommand)]
+        task_command: TaskCommands,
     },
     /// Task Management
     Task {
@@ -33,6 +45,8 @@ pub enum Commands {
         #[command(subcommand)]
         task_command: TaskCommands,
     },
+    /// Todo Tasks
+    Tasks,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
