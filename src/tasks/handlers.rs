@@ -77,7 +77,7 @@ pub fn mark_task_as(
     the_task_description.task.state_log.push(state.clone());
 
     let file_path = task_dir.join(&the_task_description.file_name);
-    let new_file_content = serde_json::to_string_pretty(&the_task_description)
+    let new_file_content = serde_json::to_string_pretty(&the_task_description.task)
         .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, the_task_description.file_name))?
         .into_bytes();
     effects.add(
