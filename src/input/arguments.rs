@@ -105,13 +105,16 @@ pub enum TaskCommands {
     #[command(subcommand)]
     List(TaskListCommand),
     /// Set the task as done
-    Done { id: i64 },
+    Done { id: Vec<i64> },
     /// Set the task as backlogged
-    Backlog { id: i64 },
+    Backlog { id: Vec<i64> },
     /// Set the task as abandoned
-    Abandon { id: i64, content: Option<String> },
+    Abandon {
+        id: Vec<i64>,
+        content: Option<String>,
+    },
     /// Set the task as todo
-    Todo { id: i64 },
+    Todo { id: Vec<i64> },
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

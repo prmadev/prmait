@@ -20,7 +20,7 @@ pub fn new_task(
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
     let file_name = t.to_file_name(time_format_descriptor)?;
-    let file_path = task_dir.join(&file_name);
+    let file_path = task_dir.clone().join(&file_name);
     let mut effects = EffectMachine::default();
 
     effects.add(
@@ -57,51 +57,55 @@ pub fn mark_task_as(
     task_dir: PathBuf,
     tasks_list: TaskList,
     state: TaskState,
-    task_identifier: i64,
+    task_identifier: Vec<i64>,
 ) -> Result<EffectMachine> {
-    let mut effects = EffectMachine::default();
-    let mut tasks = tasks_list.0;
-    tasks.retain(|x| x.task.id.to_string().contains(&task_identifier.to_string()));
-    tasks.retain(|x| {
-        let Some(last_state) = x.task.state_log.last() else {
-            return false;
-        };
-        last_state.ne(&state)
-    });
+    task_identifier
+        .iter()
+        .try_fold(EffectMachine::default(), |mut effects, ti| {
+            let mut tasks = tasks_list.0.clone();
+            tasks.retain(|x| x.task.id.to_string().contains(&ti.to_string()));
+            tasks.retain(|x| {
+                let Some(last_state) = x.task.state_log.last() else {
+                    return false;
+                };
+                last_state.ne(&state)
+            });
 
-    if tasks.len() > 1 {
-        return Err(Error::MoreThanOneTaskWasFound(Box::new(tasks)));
-    }
+            if tasks.len() > 1 {
+                return Err(Error::MoreThanOneTaskWasFound(Box::new(tasks)));
+            }
 
-    let mut the_task_description = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
-    the_task_description.task.state_log.push(state.clone());
+            let mut the_task_description = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
+            the_task_description.task.state_log.push(state.clone());
 
-    let file_path = task_dir.join(&the_task_description.file_name);
-    let new_file_content = serde_json::to_string_pretty(&the_task_description.task)
-        .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, the_task_description.file_name))?
-        .into_bytes();
-    effects.add(
-        EffectKind::WriteToFile(FileWriterOpts {
-            content: new_file_content,
-            file_path: file_path.clone(),
-            can_create: false,
-            can_overwrite: true,
-        }),
-        false,
-    );
-    effects.add(
-        EffectKind::GitHook(crate::effects::GitHookOpts {
-            start_path: task_dir,
-            files_to_add: vec![file_path],
-            message: format!(
-                "feat: updated task {} to the new state {}",
-                the_task_description.task.id, state,
-            ),
-        }),
-        true,
-    );
-
-    Ok(effects)
+            let file_path = task_dir.clone().join(&the_task_description.file_name);
+            let new_file_content = serde_json::to_string_pretty(&the_task_description.task)
+                .map_err(|e| {
+                    Error::FileCouldNotSerializeEntryIntoJson(e, the_task_description.file_name)
+                })?
+                .into_bytes();
+            effects.add(
+                EffectKind::WriteToFile(FileWriterOpts {
+                    content: new_file_content,
+                    file_path: file_path.clone(),
+                    can_create: false,
+                    can_overwrite: true,
+                }),
+                false,
+            );
+            effects.add(
+                EffectKind::GitHook(crate::effects::GitHookOpts {
+                    start_path: task_dir.clone(),
+                    files_to_add: vec![file_path.clone()],
+                    message: format!(
+                        "feat: updated task {} to the new state {}",
+                        the_task_description.task.id, state,
+                    ),
+                }),
+                true,
+            );
+            Ok(effects)
+        })
 }
 
 pub fn todays_task(
