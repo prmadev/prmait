@@ -15,7 +15,7 @@ pub fn new_entry(
     entry: Entry,
     journal_path: &PathBuf,
     at: OffsetDateTime,
-    time_format_descriptor_for_file_name: &Vec<time::format_description::FormatItem>,
+    time_format_descriptor_for_file_name: &(impl Formattable + ?Sized),
 ) -> Result<()> {
     _ = fs_extra::dir::create(journal_path, false).map_err(Error::JournalDirCouldNotBeCreated);
 

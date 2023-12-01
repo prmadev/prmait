@@ -1,6 +1,7 @@
 use figment::providers::{Env, Format, Json};
 use figment::Figment;
 use std::path::PathBuf;
+use time::format_description;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -75,13 +76,40 @@ impl Configs {
             .path
             .ok_or(Error::DirDoesNotExist)
     }
+    pub fn journal_file_formatting(&self) -> Result<format_description::OwnedFormatItem, Error> {
+        Ok(format_description::parse_owned::<2>(
+            &self
+                .journal
+                .clone()
+                .ok_or(Error::UnsetConfiguration("journal".to_owned()))?
+                .file_name_format
+                .ok_or(Error::UnsetConfiguration(
+                    "journal.file_name_format".to_owned(),
+                ))?,
+        )?)
+    }
+    pub fn task_file_formatting(&self) -> Result<format_description::OwnedFormatItem, Error> {
+        Ok(format_description::parse_owned::<2>(
+            &self
+                .task
+                .clone()
+                .ok_or(Error::UnsetConfiguration("task".to_owned()))?
+                .file_name_format
+                .ok_or(Error::UnsetConfiguration(
+                    "task.file_name_format".to_owned(),
+                ))?,
+        )?)
+    }
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, thiserror::Error)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
-    #[error("The path to the directory is not given")]
+    #[error("The path to the directory is not given.")]
     DirDoesNotExist,
+    #[error("{0} was not set in the the configuration.")]
+    UnsetConfiguration(String),
+    #[error("File format descriptor for journal is not valid: {0}.")]
+    TheFormatIsNotValid(#[from] time::error::InvalidFormatDescription),
 }
 
 #[cfg(test)]

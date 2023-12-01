@@ -1,5 +1,6 @@
 use clap::{CommandFactory, Parser};
-use color_eyre::{eyre::Result, Report};
+use color_eyre::eyre::Result;
+use color_eyre::Report;
 use prmait::input::{
     Args, Commands, Configs, JournalCommands, JournalEditCommands, TaskCommands, TaskListCommand,
 };
@@ -7,49 +8,41 @@ use prmait::tasks::handlers::{mark_task_as, tasks_by_state, todays_task};
 use prmait::tasks::task::{Task, TaskState};
 use prmait::tasks::tasklist::TaskList;
 use prmait::{git, journal, river, tasks, timeutils};
+use std::env;
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    // error message management
     color_eyre::install()?;
+
+    // tracing
     tracing_subscriber::fmt::init();
 
+    // getting arugments
     let args = Args::parse();
 
+    // forming config out of arguments
     let config = Configs::try_from(&args.config.unwrap_or(PathBuf::from(DEFAULT_CONFIG_PATH)))?;
+
+    // getting current time offset
     let time_offset = config
         .time_offset
-        .ok_or(color_eyre::Report::msg(
-            "time offset for journal is not set",
-        ))
+        .ok_or(Report::msg("time offset for is not set"))
         .map(|(h, m, s)| time::UtcOffset::from_hms(h, m, s))??;
 
+    // getting current time
     let now = OffsetDateTime::now_utc().to_offset(time_offset);
-    let journal_file_formatting = &config
-        .journal
-        .clone()
-        .ok_or(Report::msg("journal configuration must be set"))?
-        .file_name_format
-        .ok_or(Report::msg(
-            "file name format decriptor for journal must be set",
-        ))?;
-    let file_format_for_journal =
-        { time::format_description::parse_borrowed::<2>(journal_file_formatting)? };
-    let task_file_formatting = &config
-        .task
-        .clone()
-        .ok_or(Report::msg("task configuration must be set"))?
-        .file_name_format
-        .ok_or(Report::msg(
-            "file name format decriptor for task must be set",
-        ))?;
-    let file_format_for_tasks =
-        time::format_description::parse_borrowed::<2>(task_file_formatting)?;
+
+    // getting task directory
     let task_dir = config.task_path()?;
-    let project = git::repo_root(std::env::current_dir()?)
+
+    // getting current directory's project
+    let project = git::repo_root(env::current_dir()?)
         .map(git::repo_directory_name)
         .ok()
         .and_then(Result::ok);
@@ -73,7 +66,7 @@ async fn main() -> Result<()> {
                         },
                         &config.journal_path()?,
                         now,
-                        &file_format_for_journal,
+                        &config.journal_file_formatting()?,
                     )?,
                     JournalCommands::List => journal::handlers::list_entries(
                         &config.journal_path()?,
@@ -82,17 +75,17 @@ async fn main() -> Result<()> {
                     JournalCommands::Edit(edit_type) => match edit_type {
                         JournalEditCommands::Last => journal::handlers::edit_last_entry(
                             &config.journal_path()?,
-                            editor(std::env::var_os("EDITOR"))?,
+                            editor(env::var_os("EDITOR"))?,
                         )?,
                         JournalEditCommands::All => journal::handlers::edit_all_entries(
                             &config.journal_path()?,
-                            editor(std::env::var_os("EDITOR"))?,
+                            editor(env::var_os("EDITOR"))?,
                         )?,
                         JournalEditCommands::Specific { item } => {
                             journal::handlers::edit_specific_entry(
                                 &config.journal_path()?,
                                 item,
-                                editor(std::env::var_os("EDITOR"))?,
+                                editor(env::var_os("EDITOR"))?,
                             )?
                         }
                     },
@@ -117,15 +110,19 @@ async fn main() -> Result<()> {
                     let end = deadline
                         .map(|s| timeutils::parse_date(&s, time_offset))
                         .transpose()?;
+
                     let start = best_starting_time
                         .map(|s| timeutils::parse_date(&s, time_offset))
                         .transpose()?;
-                    let mut projects = projects.unwrap_or(vec![]);
-                    if let Ok(Ok(p)) =
-                        git::repo_root(std::env::current_dir()?).map(git::repo_directory_name)
-                    {
-                        projects.push(p);
-                    }
+
+                    let projects = {
+                        let mut buf = projects.unwrap_or(vec![]);
+                        if let Some(current_folder_project) = project {
+                            buf.push(current_folder_project);
+                        };
+                        buf
+                    };
+
                     let t = Task {
                         id: now.unix_timestamp(),
                         time_created: now,
@@ -138,8 +135,12 @@ async fn main() -> Result<()> {
                         start,
                         end,
                     };
-                    let efs =
-                        tasks::handlers::new_task(config.task_path()?, t, &file_format_for_tasks)?;
+
+                    let efs = tasks::handlers::new_task(
+                        config.task_path()?,
+                        t,
+                        &config.task_file_formatting()?,
+                    )?;
                     efs.run()?;
                 }
                 TaskCommands::List(task_list_command) => {
@@ -214,7 +215,7 @@ async fn main() -> Result<()> {
             Commands::River => {
                 let river_config = &config
                     .river
-                    .ok_or(color_eyre::Report::msg("river settings not found"))?;
+                    .ok_or(Report::msg("river settings not found"))?;
                 river::run(
                     river_config.border_width,
                     &river_config.colors,
@@ -227,7 +228,7 @@ async fn main() -> Result<()> {
             Commands::Tasks => {
                 let task_dir = config.task_path()?;
                 let tasklist = TaskList::try_from(&task_dir)?;
-                let project = git::repo_root(std::env::current_dir()?)
+                let project = git::repo_root(env::current_dir()?)
                     .map(git::repo_directory_name)
                     .ok()
                     .and_then(Result::ok);
