@@ -906,6 +906,7 @@ dependencies = [
  "fs_extra",
  "gix-discover",
  "nom",
+ "once_cell",
  "serde",
  "serde_json",
  "thiserror",
