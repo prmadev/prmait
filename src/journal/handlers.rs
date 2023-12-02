@@ -1,4 +1,5 @@
 use super::Result;
+use crate::effects::{CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts, GitHookOpts};
 use crate::files::{edit_with_editor, ToFileName};
 use crate::git;
 use crate::journal::entry::Entry;
@@ -16,32 +17,41 @@ pub fn new_entry(
     journal_path: &PathBuf,
     at: OffsetDateTime,
     time_format_descriptor_for_file_name: &(impl Formattable + ?Sized),
-) -> Result<()> {
-    _ = fs_extra::dir::create(journal_path, false).map_err(Error::JournalDirCouldNotBeCreated);
+) -> Result<EffectMachine> {
+    let mut effects = EffectMachine::default();
+    effects.add(
+        EffectKind::CreateDir(CreateDirOpts {
+            folder_path: journal_path.to_owned(),
+            ok_if_exists: true,
+        }),
+        false,
+    );
 
     let file_name = at.to_file_name(time_format_descriptor_for_file_name)?;
     let file_path = journal_path.join(&file_name);
 
-    if file_path.exists() {
-        return Err(Error::JournalEntryFileAlreadyExists);
-    }
+    effects.add(
+        EffectKind::WriteToFile(FileWriterOpts {
+            content: serde_json::to_string_pretty(&entry)
+                .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, file_name.clone()))?
+                .as_bytes()
+                .to_vec(),
+            file_path: file_path.clone(),
+            can_create: true,
+            can_overwrite: false,
+        }),
+        false,
+    );
+    effects.add(
+        EffectKind::GitHook(GitHookOpts {
+            start_path: journal_path.to_owned(),
+            files_to_add: vec![file_path],
+            message: format!("feat(journal): add new journal entry {file_name}"),
+        }),
+        true,
+    );
 
-    fs_extra::file::write_all(
-        &file_path,
-        &serde_json::to_string_pretty(&entry)
-            .map_err(|e| Error::FileCouldNotSerializeEntryIntoJson(e, file_name.clone()))?,
-    )
-    .map_err(Error::FileCouldNotBeWrittenTo)?;
-
-    let repo_root = git::repo_root(journal_path.clone()).map_err(Error::GitError)?;
-    git::git_hook(
-        repo_root.as_os_str().to_os_string(),
-        vec![file_path.as_os_str().to_os_string()],
-        &format!("feat(journal): add new journal entry {file_name}"),
-    )
-    .map_err(Error::GitError)?;
-
-    Ok(())
+    Ok(effects)
 }
 
 pub fn list_entries(

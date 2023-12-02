@@ -56,18 +56,22 @@ async fn main() -> Result<()> {
                         tag,
                         mood,
                         people,
-                    } => journal::handlers::new_entry(
-                        journal::Entry {
-                            at: now,
-                            body: Arc::new(entry),
-                            tag,
-                            mood,
-                            people,
-                        },
-                        &config.journal_path()?,
-                        now,
-                        &config.journal_file_formatting()?,
-                    )?,
+                    } => {
+                        let efs = journal::handlers::new_entry(
+                            journal::Entry {
+                                at: now,
+                                body: Arc::new(entry),
+                                tag,
+                                mood,
+                                people,
+                            },
+                            &config.journal_path()?,
+                            now,
+                            &config.journal_file_formatting()?,
+                        )?;
+
+                        efs.run()?;
+                    }
                     JournalCommands::List => journal::handlers::list_entries(
                         &config.journal_path()?,
                         &well_known::Rfc3339,
