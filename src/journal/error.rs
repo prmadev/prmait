@@ -1,4 +1,4 @@
-use crate::{files, git};
+use crate::git;
 
 pub(super) type Result<T> = std::result::Result<T, Error>;
 
@@ -28,8 +28,8 @@ pub enum Error {
     FileCouldNotBeDeleted(fs_extra::error::Error),
     #[error("there is entry to be found")]
     NoEntries,
-    #[error("could not work with the editor: {0}")]
-    EditorFailed(files::Error),
+    // #[error("could not work with the editor: {0}")]
+    // EditorFailed(files::Error),
     #[error("interactive tools failed: {0}")]
     DialoguerError(dialoguer::Error),
     #[error("entry could not be found")]

@@ -39,6 +39,16 @@ impl TryFrom<PathBuf> for EntryDescription {
     }
 }
 impl Book {
+    pub fn truncated_form(&self, truncate_at: usize) -> Vec<String> {
+        self.entries
+            .iter()
+            .map(|ent| {
+                let mut truncated_body = ent.entry.body.to_string();
+                truncated_body.truncate(truncate_at);
+                format!("{} -> {} ... ", ent.file_name, truncated_body)
+            })
+            .collect()
+    }
     pub fn table_list(
         &self,
         time_format_descriptor: &(impl Formattable + ?Sized),

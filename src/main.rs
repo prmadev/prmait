@@ -77,27 +77,38 @@ async fn main() -> Result<()> {
                         &well_known::Rfc3339,
                     )?,
                     JournalCommands::Edit(edit_type) => match edit_type {
-                        JournalEditCommands::Last => journal::handlers::edit_last_entry(
-                            &config.journal_path()?,
-                            editor(env::var_os("EDITOR"))?,
-                        )?,
-                        JournalEditCommands::All => journal::handlers::edit_all_entries(
-                            &config.journal_path()?,
-                            editor(env::var_os("EDITOR"))?,
-                        )?,
+                        JournalEditCommands::Last => {
+                            let efs = journal::handlers::edit_last_entry(
+                                &config.journal_path()?,
+                                journal::Book::try_from(&config.journal_path()?)?,
+                                editor(env::var_os("EDITOR"))?,
+                            )?;
+                            efs.run()?;
+                        }
+                        JournalEditCommands::All => {
+                            let efs = journal::handlers::edit_all_entries(
+                                &config.journal_path()?,
+                                editor(env::var_os("EDITOR"))?,
+                                journal::Book::try_from(&config.journal_path()?)?,
+                            )?;
+                            efs.run()?;
+                        }
                         JournalEditCommands::Specific { item } => {
-                            journal::handlers::edit_specific_entry(
+                            let efs = journal::handlers::edit_specific_entry(
                                 &config.journal_path()?,
                                 item,
+                                journal::Book::try_from(&config.journal_path()?)?,
                                 editor(env::var_os("EDITOR"))?,
-                            )?
+                            )?;
+                            efs.run()?;
                         }
                     },
-                    JournalCommands::Delete => journal::handlers::delete_interactive(
-                        &config.journal_path()?,
-                        20,
-                        &well_known::Rfc3339,
-                    )?,
+                    // JournalCommands::Delete => journal::handlers::delete_interactive(
+                    //     &config.journal_path()?,
+                    //     20,
+                    //     journal::Book::try_from(&config.journal_path()?)?,
+                    //     &well_known::Rfc3339,
+                    // )?,
                 }
             }
 
@@ -251,10 +262,15 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn editor(extractor: Option<OsString>) -> Result<OsString> {
+fn editor(extractor: Option<OsString>) -> Result<String> {
     let editor = extractor.ok_or(Report::msg("editor variable is not specified"))?;
     if editor.is_empty() {
         return Err(Report::msg("editor variable is not specified"));
     };
-    Ok(editor)
+    match editor.into_string() {
+        Ok(s) => Ok(s),
+        Err(e) => Err(Report::msg(format!(
+            "could not convert file name to string: {e:?}"
+        ))),
+    }
 }

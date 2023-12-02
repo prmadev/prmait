@@ -70,8 +70,8 @@ pub enum JournalCommands {
     /// edit commands
     #[command(subcommand)]
     Edit(JournalEditCommands),
-    /// interactively delete an entry
-    Delete,
+    // interactively delete an entry
+    // Delete,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

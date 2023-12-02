@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::PathBuf};
+use std::{ffi::OsString, path::PathBuf, process::Command};
 
 use tracing::{debug, error, info, trace};
 
@@ -10,6 +10,7 @@ pub enum EffectKind {
     WriteToFile(FileWriterOpts),
     CreateDir(CreateDirOpts),
     GitHook(GitHookOpts),
+    OpenInEditor(OpenInEditorOpts),
 }
 
 impl EffectKind {
@@ -18,6 +19,7 @@ impl EffectKind {
             EffectKind::WriteToFile(opts) => file_writer(opts),
             EffectKind::CreateDir(opts) => dir_creator(opts),
             EffectKind::GitHook(opts) => git_hooker(opts),
+            EffectKind::OpenInEditor(opts) => editor_opener(opts),
         }
     }
 }
@@ -81,9 +83,28 @@ pub enum Error {
     CouldNotCreateDir(fs_extra::error::Error),
     #[error("got error from running git command: {0}")]
     GitError(git::Error),
+    #[error("editor returned error: {0}")]
+    EditorError(std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, Error>;
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct OpenInEditorOpts {
+    pub editor: String,
+    pub files_to_edit: Vec<PathBuf>,
+}
+
+#[tracing::instrument]
+fn editor_opener(opts: OpenInEditorOpts) -> Result<()> {
+    trace!(stage = "starting to edit the file");
+    Command::new(opts.editor)
+        .args(opts.files_to_edit)
+        .status()
+        .map_err(Error::EditorError)?;
+    Ok(())
+}
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
