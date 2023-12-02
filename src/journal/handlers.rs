@@ -17,6 +17,10 @@ pub fn new_entry(
     time_format_descriptor_for_file_name: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
+
+    let file_name = at.to_file_name(time_format_descriptor_for_file_name)?;
+    let file_path = journal_path.join(&file_name);
+
     effects.add(
         EffectKind::CreateDir(CreateDirOpts {
             folder_path: journal_path.to_owned(),
@@ -24,9 +28,6 @@ pub fn new_entry(
         }),
         false,
     );
-
-    let file_name = at.to_file_name(time_format_descriptor_for_file_name)?;
-    let file_path = journal_path.join(&file_name);
 
     effects.add(
         EffectKind::WriteToFile(FileWriterOpts {
@@ -40,6 +41,7 @@ pub fn new_entry(
         }),
         false,
     );
+
     effects.add(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
@@ -69,8 +71,8 @@ pub fn edit_last_entry(
     editor: String,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
-    let file_name = &book.entries.last().ok_or(Error::NoEntries)?.file_name;
 
+    let file_name = &book.entries.last().ok_or(Error::NoEntries)?.file_name;
     let ent_path = journal_path.join(file_name);
 
     effects.add(
@@ -80,6 +82,7 @@ pub fn edit_last_entry(
         }),
         true,
     );
+
     effects.add(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
@@ -99,6 +102,7 @@ pub fn edit_specific_entry(
     editor: String,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
+
     let ent_path: Vec<PathBuf> = book
         .entries
         .iter()
@@ -113,6 +117,7 @@ pub fn edit_specific_entry(
         }),
         true,
     );
+
     effects.add(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
@@ -176,16 +181,10 @@ pub fn edit_all_entries(
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
 
-    let files_to_edit = book
-        .entries
-        .iter()
-        .map(|entry| journal_path.clone().join(&entry.file_name))
-        .collect();
-
     effects.add(
         EffectKind::OpenInEditor(OpenInEditorOpts {
             editor,
-            files_to_edit,
+            files_to_edit: book.files(),
         }),
         true,
     );

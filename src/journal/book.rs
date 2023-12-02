@@ -11,6 +11,7 @@ use time::formatting::Formattable;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Book {
     pub entries: Arc<[EntryDescription]>,
+    pub location: PathBuf,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -39,6 +40,12 @@ impl TryFrom<PathBuf> for EntryDescription {
     }
 }
 impl Book {
+    pub fn files(&self) -> Vec<PathBuf> {
+        self.entries
+            .iter()
+            .map(|entry| self.location.join(&entry.file_name))
+            .collect()
+    }
     pub fn truncated_form(&self, truncate_at: usize) -> Vec<String> {
         self.entries
             .iter()
@@ -86,10 +93,11 @@ impl Book {
     }
 }
 
-impl From<Vec<EntryDescription>> for Book {
-    fn from(entries: Vec<EntryDescription>) -> Self {
+impl From<(Vec<EntryDescription>, PathBuf)> for Book {
+    fn from((entries, location): (Vec<EntryDescription>, PathBuf)) -> Self {
         Book {
             entries: entries.into(),
+            location,
         }
     }
 }
@@ -106,7 +114,7 @@ impl TryFrom<&PathBuf> for Book {
             .map(EntryDescription::try_from)
             .try_fold(vec![], fold_or_err)?;
         entries.sort();
-        Ok(Self::from(entries))
+        Ok(Self::from((entries, value.clone())))
     }
 }
 #[cfg(test)]
