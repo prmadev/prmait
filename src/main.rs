@@ -238,7 +238,7 @@ async fn main() -> Result<()> {
                     &river_config.startups,
                     &river_config.apps,
                 )
-                .await?
+                .await?;
             }
             Commands::Tasks => {
                 let task_dir = config.task_path()?;

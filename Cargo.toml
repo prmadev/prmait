@@ -44,5 +44,12 @@ tracing-subscriber = "0.3.18"
 strip = true      # Automatically strip symbols from the binary.
 lto = true
 codegen-units = 1
+
 [lints.clippy]
-pedantic = "warn"
+expect_used = "warn"
+unwrap_used = "warn"
+panic = "warn"
+indexing_slicing = "warn"
+clone_on_ref_ptr = "warn"
+default_numeric_fallback = "warn"
+string_to_string = "warn"

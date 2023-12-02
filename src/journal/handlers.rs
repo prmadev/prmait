@@ -122,7 +122,7 @@ pub fn edit_specific_entry(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
             files_to_add: vec![journal_path.to_owned()],
-            message: format!("feat(journal): edit the few entries"),
+            message: "feat(journal): edit the few entries".to_string(),
         }),
         true,
     );
@@ -193,7 +193,7 @@ pub fn edit_all_entries(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
             files_to_add: vec![journal_path.to_owned()],
-            message: format!("feat(journal): edit bunch of entries"),
+            message: "feat(journal): edit bunch of entries".to_string(),
         }),
         true,
     );

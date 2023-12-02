@@ -18,10 +18,10 @@ pub fn parse_date(input: &str, offset: UtcOffset) -> Result<Date, Error> {
         .map_err(|e: nom::Err<_>| Error::ErrorParsingDate(e.to_string()))?;
     match action {
         ParserAction::TimeFromNow(duration) => match duration {
-            TimeUnit::Day(count) => Ok(day_from_today(offset, count as i64)),
-            TimeUnit::Week(count) => Ok(day_from_today(offset, count as i64 * 7)), // TODO: make this smarter
-            TimeUnit::Month(count) => Ok(day_from_today(offset, count as i64 * 30)), // TODO: make this smarter
-            TimeUnit::Year(count) => Ok(day_from_today(offset, count as i64 * 365)), // TODO: make this smarter
+            TimeUnit::Day(count) => Ok(day_from_today(offset, i64::from(count))),
+            TimeUnit::Week(count) => Ok(day_from_today(offset, i64::from(count) * 7)), // TODO: make this smarter
+            TimeUnit::Month(count) => Ok(day_from_today(offset, i64::from(count) * 30)), // TODO: make this smarter
+            TimeUnit::Year(count) => Ok(day_from_today(offset, i64::from(count) * 365)), // TODO: make this smarter
         },
         ParserAction::SpecificDate(y, m, d) => Ok(time::Date::from_calendar_date(y, m, d)?),
     }

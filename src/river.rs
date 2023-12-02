@@ -311,9 +311,9 @@ async fn tags() -> Result<(), Error> {
     static TOGGLE_VIEW: &str = "toggle-view-tags";
     static SET_VIEW: &str = "set-view-tags";
 
-    for i in 1..=9 {
-        let numb = format!("{}", i);
-        let tag = format!("{}", 1 << (i - 1));
+    for i in 1_i32..=9_i32 {
+        let numb = format!("{i}");
+        let tag = format!("{}", 1_i32 << (i - 1_i32));
 
         let que: Vec<Vec<&str>> = vec![
             vec!["map", "normal", "Super", &numb, SET_FOCUS, &tag],
@@ -330,15 +330,15 @@ async fn tags() -> Result<(), Error> {
         ];
 
         let mut handles = vec![];
-        for command in que.iter() {
-            handles.push(riverctl(command.to_vec()));
+        for command in &que {
+            handles.push(riverctl(command.clone()));
         }
         for handle in handles {
             handle.await?;
         }
     }
 
-    let all_tags = format!("{}", (1u64 << 32) - 1);
+    let all_tags = format!("{}", (1u64 << 32_i32) - 1_u64);
     riverctl(vec!["map", "normal", "Super", "0", SET_FOCUS, &all_tags]).await?;
     riverctl(vec![
         "map",
@@ -416,7 +416,7 @@ impl From<CommandSet> for String {
             &value
                 .args
                 .into_iter()
-                .fold(String::from(""), |accu, u| accu + " " + &u)
+                .fold(String::new(), |accu, u| accu + " " + &u)
         )
     }
 }

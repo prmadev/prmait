@@ -30,11 +30,11 @@ pub fn add(repo: OsString, files: Vec<OsString>) -> Result<()> {
     let args = [
         [
             repo_arg.to_os_string(),
-            repo.to_os_string(),
+            repo.clone(),
             command.to_os_string(),
         ]
         .to_vec(),
-        files.to_vec(),
+        files.clone(),
     ]
     .concat();
 
@@ -76,7 +76,7 @@ pub fn pull(repo: OsString) -> Result<()> {
 
 fn process_command(cmd: &mut process::Command) -> Result<()> {
     if let Some(status) = cmd.status().map_err(Error::CommandCouldNotBeRan)?.code() {
-        if status != 0 {
+        if status != 0_i32 {
             return Err(Error::CommandReturnedNon0StatusCode(status));
         }
     };

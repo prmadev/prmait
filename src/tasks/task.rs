@@ -103,7 +103,7 @@ impl Task {
 }
 
 impl Task {
-    pub fn current_state(&self) -> Option<&TaskState> {
+    #[must_use] pub fn current_state(&self) -> Option<&TaskState> {
         self.state_log.last()
     }
 }

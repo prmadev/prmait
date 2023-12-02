@@ -33,7 +33,7 @@ pub struct Effect {
 pub struct EffectMachine(Vec<Effect>);
 impl EffectMachine {
     pub fn run(self) -> Result<()> {
-        for ef in self.0.into_iter() {
+        for ef in self.0 {
             if let Err(error) = ef.effect_kind.apply() {
                 error!("something went wrong during applying that effect");
 
@@ -48,14 +48,14 @@ impl EffectMachine {
         trace!("done with all the effects");
         Ok(())
     }
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         EffectMachine(vec![])
     }
     pub fn add(&mut self, effect: EffectKind, forgiving: bool) {
         self.0.push(Effect {
             effect_kind: effect,
             forgiving,
-        })
+        });
     }
 }
 

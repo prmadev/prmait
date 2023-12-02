@@ -101,9 +101,9 @@ impl Entry {
         let body = format!("{}", self.body.bold());
 
         let tags = if self.tag.is_empty() {
-            "".to_owned()
+            String::new()
         } else {
-            self.tag.iter().fold("".to_owned(), |accu, item| {
+            self.tag.iter().fold(String::new(), |accu, item| {
                 format!("{}#{} ", accu, item.italic())
             })
         };

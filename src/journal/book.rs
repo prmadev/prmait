@@ -40,12 +40,14 @@ impl TryFrom<PathBuf> for EntryDescription {
     }
 }
 impl Book {
+    #[must_use]
     pub fn files(&self) -> Vec<PathBuf> {
         self.entries
             .iter()
             .map(|entry| self.location.join(&entry.file_name))
             .collect()
     }
+    #[must_use]
     pub fn truncated_form(&self, truncate_at: usize) -> Vec<String> {
         self.entries
             .iter()
@@ -66,9 +68,9 @@ impl Book {
         table.set_content_arrangement(ContentArrangement::Dynamic);
         self.entries
             .iter()
-            .try_fold((), |_, entry| -> Result<(), Error> {
+            .try_fold((), |(), entry| -> Result<(), Error> {
                 table.add_row(vec![
-                    Cell::new((entry.entry.at.format(time_format_descriptor)?).to_string())
+                    Cell::new((entry.entry.at.format(time_format_descriptor)?).to_owned())
                         .bg(comfy_table::Color::White)
                         .fg(comfy_table::Color::Black),
                     Cell::new(format!("{}", &entry.entry.body)),
@@ -81,7 +83,7 @@ impl Book {
                                 .entry
                                 .tag
                                 .iter()
-                                .fold("".to_string(), |accu, item| format!("{accu}, {item}")),
+                                .fold(String::new(), |accu, item| format!("{accu}, {item}")),
                         )
                         .fg(comfy_table::Color::Blue)
                     },
