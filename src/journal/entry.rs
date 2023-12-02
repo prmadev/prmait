@@ -71,7 +71,7 @@ impl TryFrom<PathBuf> for Entry {
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let entry: Entry = serde_json::from_str(&content)
+        let entry: Self = serde_json::from_str(&content)
             .map_err(|e| Error::FileCouldNotDeserializeEntryFromJson(e, content))?;
         Ok(entry)
     }
@@ -117,10 +117,10 @@ mod testing {
     #[allow(clippy::wildcard_imports)]
     use super::*;
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<Entry>();
     }
 }

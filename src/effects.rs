@@ -16,10 +16,10 @@ pub enum EffectKind {
 impl EffectKind {
     pub fn apply(self) -> Result<()> {
         match self {
-            EffectKind::WriteToFile(opts) => file_writer(opts),
-            EffectKind::CreateDir(opts) => dir_creator(opts),
-            EffectKind::GitHook(opts) => git_hooker(opts),
-            EffectKind::OpenInEditor(opts) => editor_opener(opts),
+            Self::WriteToFile(opts) => file_writer(opts),
+            Self::CreateDir(opts) => dir_creator(opts),
+            Self::GitHook(opts) => git_hooker(opts),
+            Self::OpenInEditor(opts) => editor_opener(opts),
         }
     }
 }
@@ -48,8 +48,9 @@ impl EffectMachine {
         trace!("done with all the effects");
         Ok(())
     }
-    #[must_use] pub fn new() -> Self {
-        EffectMachine(vec![])
+    #[must_use]
+    pub const fn new() -> Self {
+        Self(vec![])
     }
     pub fn add(&mut self, effect: EffectKind, forgiving: bool) {
         self.0.push(Effect {
@@ -183,7 +184,7 @@ pub struct GitHookOpts {
 #[tracing::instrument]
 fn git_hooker(opts: GitHookOpts) -> Result<()> {
     trace!("starting with git_hooker");
-    let repo_root = git::repo_root(opts.start_path.clone()).map_err(Error::GitError)?;
+    let repo_root = git::repo_root(&opts.start_path).map_err(Error::GitError)?;
     trace!("found the repo_root {:#?}", repo_root);
 
     let files: Vec<OsString> = opts
@@ -193,8 +194,7 @@ fn git_hooker(opts: GitHookOpts) -> Result<()> {
         .collect();
 
     trace!("doing the git hooks");
-    git::git_hook(repo_root.as_os_str().to_os_string(), files, &opts.message)
-        .map_err(Error::GitError)?;
+    git::full_hook(repo_root.as_os_str(), &files, &opts.message).map_err(Error::GitError)?;
     trace!("done with the hooks");
     Ok(())
 }
@@ -203,9 +203,9 @@ fn git_hooker(opts: GitHookOpts) -> Result<()> {
 mod testing {
     #[allow(clippy::wildcard_imports)]
     use super::*;
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<EffectKind>();
     }
 }

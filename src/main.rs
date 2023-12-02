@@ -5,7 +5,7 @@ use prmait::input::{
     Args, Commands, Configs, JournalCommands, JournalEditCommands, TaskCommands, TaskListCommand,
 };
 use prmait::tasks::handlers::{mark_task_as, tasks_by_state, todays_task};
-use prmait::tasks::task::{Task, TaskState};
+use prmait::tasks::task::{State, Task};
 use prmait::tasks::tasklist::TaskList;
 use prmait::{git, journal, river, tasks, timeutils};
 use std::env;
@@ -42,8 +42,8 @@ async fn main() -> Result<()> {
     let task_dir = config.task_path()?;
 
     // getting current directory's project
-    let project = git::repo_root(env::current_dir()?)
-        .map(git::repo_directory_name)
+    let project = git::repo_root(&env::current_dir()?)
+        .map(|x| git::repo_directory_name(&x))
         .ok()
         .and_then(Result::ok);
 
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
                         people,
                     } => {
                         let efs = journal::handlers::new_entry(
-                            journal::Entry {
+                            &journal::Entry {
                                 at: now,
                                 body: Arc::new(entry),
                                 tag,
@@ -80,7 +80,7 @@ async fn main() -> Result<()> {
                         JournalEditCommands::Last => {
                             let efs = journal::handlers::edit_last_entry(
                                 &config.journal_path()?,
-                                journal::Book::try_from(&config.journal_path()?)?,
+                                &journal::Book::try_from(&config.journal_path()?)?,
                                 editor(env::var_os("EDITOR"))?,
                             )?;
                             efs.run()?;
@@ -89,15 +89,15 @@ async fn main() -> Result<()> {
                             let efs = journal::handlers::edit_all_entries(
                                 &config.journal_path()?,
                                 editor(env::var_os("EDITOR"))?,
-                                journal::Book::try_from(&config.journal_path()?)?,
+                                &journal::Book::try_from(&config.journal_path()?)?,
                             )?;
                             efs.run()?;
                         }
                         JournalEditCommands::Specific { item } => {
                             let efs = journal::handlers::edit_specific_entry(
                                 &config.journal_path()?,
-                                item,
-                                journal::Book::try_from(&config.journal_path()?)?,
+                                &item,
+                                &journal::Book::try_from(&config.journal_path()?)?,
                                 editor(env::var_os("EDITOR"))?,
                             )?;
                             efs.run()?;
@@ -141,7 +141,7 @@ async fn main() -> Result<()> {
                     let t = Task {
                         id: now.unix_timestamp(),
                         time_created: now,
-                        state_log: vec![TaskState::ToDo(now)],
+                        state_log: vec![State::ToDo(now)],
                         title,
                         description,
                         area,
@@ -152,8 +152,8 @@ async fn main() -> Result<()> {
                     };
 
                     let efs = tasks::handlers::new_task(
-                        config.task_path()?,
-                        t,
+                        &config.task_path()?,
+                        &t,
                         &config.task_file_formatting()?,
                     )?;
                     efs.run()?;
@@ -162,13 +162,13 @@ async fn main() -> Result<()> {
                     let tasklist = TaskList::try_from(&task_dir)?;
                     match task_list_command {
                         TaskListCommand::Today => {
-                            todays_task(tasklist, now.date(), project, now, &well_known::Rfc3339)?;
+                            todays_task(tasklist, now.date(), &project, now, &well_known::Rfc3339)?;
                         }
                         TaskListCommand::Todo => {
                             tasks_by_state(
                                 tasklist,
-                                |x| matches!(x, &TaskState::ToDo(_)),
-                                project,
+                                |x| matches!(x, &State::ToDo(_)),
+                                &project,
                                 now,
                                 &well_known::Rfc3339,
                             )?;
@@ -176,8 +176,8 @@ async fn main() -> Result<()> {
                         TaskListCommand::Done => {
                             tasks_by_state(
                                 tasklist,
-                                |x| matches!(x, &TaskState::Done(_)),
-                                project,
+                                |x| matches!(x, &State::Done(_)),
+                                &project,
                                 now,
                                 &well_known::Rfc3339,
                             )?;
@@ -185,8 +185,8 @@ async fn main() -> Result<()> {
                         TaskListCommand::Abandoned => {
                             tasks_by_state(
                                 tasklist,
-                                |x| matches!(x, TaskState::Abandoned(_, _)),
-                                project,
+                                |x| matches!(x, State::Abandoned(_, _)),
+                                &project,
                                 now,
                                 &well_known::Rfc3339,
                             )?;
@@ -194,8 +194,8 @@ async fn main() -> Result<()> {
                         TaskListCommand::Backlogged => {
                             tasks_by_state(
                                 tasklist,
-                                |x| matches!(x, TaskState::Backlog(_)),
-                                project,
+                                |x| matches!(x, State::Backlog(_)),
+                                &project,
                                 now,
                                 &well_known::Rfc3339,
                             )?;
@@ -204,23 +204,23 @@ async fn main() -> Result<()> {
                 }
                 TaskCommands::Done { id } => {
                     let task_list = TaskList::try_from(&task_dir)?;
-                    let effects = mark_task_as(task_dir, task_list, TaskState::Done(now), id)?;
+                    let effects = mark_task_as(&task_dir, &task_list, &State::Done(now), &id)?;
                     effects.run()?;
                 }
                 TaskCommands::Backlog { id } => {
                     let task_list = TaskList::try_from(&task_dir)?;
-                    let effects = mark_task_as(task_dir, task_list, TaskState::Backlog(now), id)?;
+                    let effects = mark_task_as(&task_dir, &task_list, &State::Backlog(now), &id)?;
                     effects.run()?;
                 }
                 TaskCommands::Abandon { id, content } => {
                     let task_list = TaskList::try_from(&task_dir)?;
                     let effects =
-                        mark_task_as(task_dir, task_list, TaskState::Abandoned(now, content), id)?;
+                        mark_task_as(&task_dir, &task_list, &State::Abandoned(now, content), &id)?;
                     effects.run()?;
                 }
                 TaskCommands::Todo { id } => {
                     let task_list = TaskList::try_from(&task_dir)?;
-                    let effects = mark_task_as(task_dir, task_list, TaskState::ToDo(now), id)?;
+                    let effects = mark_task_as(&task_dir, &task_list, &State::ToDo(now), &id)?;
                     effects.run()?;
                 }
             },
@@ -243,14 +243,14 @@ async fn main() -> Result<()> {
             Commands::Tasks => {
                 let task_dir = config.task_path()?;
                 let tasklist = TaskList::try_from(&task_dir)?;
-                let project = git::repo_root(env::current_dir()?)
-                    .map(git::repo_directory_name)
+                let project = git::repo_root(&env::current_dir()?)
+                    .map(|x| git::repo_directory_name(&x))
                     .ok()
                     .and_then(Result::ok);
                 tasks_by_state(
                     tasklist,
-                    |x| matches!(x, &TaskState::ToDo(_)),
-                    project,
+                    |x| matches!(x, &State::ToDo(_)),
+                    &project,
                     now,
                     &well_known::Rfc3339,
                 )?;

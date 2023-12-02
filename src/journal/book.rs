@@ -31,7 +31,7 @@ impl TryFrom<PathBuf> for EntryDescription {
             .to_str()
             .ok_or(Error::FileNameHasInvalidCharacters)?
             .to_owned();
-        Ok(EntryDescription {
+        Ok(Self {
             entry: Entry::try_from(value).map_err(|e| {
                 Error::CouldNotDeserializeEntryFromJson(Box::new(e), file_name.clone())
             })?,
@@ -70,7 +70,7 @@ impl Book {
             .iter()
             .try_fold((), |(), entry| -> Result<(), Error> {
                 table.add_row(vec![
-                    Cell::new((entry.entry.at.format(time_format_descriptor)?).to_owned())
+                    Cell::new((entry.entry.at.format(time_format_descriptor)?).clone())
                         .bg(comfy_table::Color::White)
                         .fg(comfy_table::Color::Black),
                     Cell::new(format!("{}", &entry.entry.body)),
@@ -97,7 +97,7 @@ impl Book {
 
 impl From<(Vec<EntryDescription>, PathBuf)> for Book {
     fn from((entries, location): (Vec<EntryDescription>, PathBuf)) -> Self {
-        Book {
+        Self {
             entries: entries.into(),
             location,
         }
@@ -123,10 +123,10 @@ impl TryFrom<&PathBuf> for Book {
 mod testing {
     use super::*;
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<Book>();
     }
 }

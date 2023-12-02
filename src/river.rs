@@ -416,7 +416,7 @@ impl From<CommandSet> for String {
             &value
                 .args
                 .into_iter()
-                .fold(String::new(), |accu, u| accu + " " + &u)
+                .fold(Self::new(), |accu, u| accu + " " + &u)
         )
     }
 }

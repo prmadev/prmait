@@ -197,13 +197,13 @@ pub enum Error {
 
 #[cfg(test)]
 mod testing {
-
-    use crate::timeutils::{today, tomorrow};
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
     use super::*;
+    use crate::timeutils::{today, tomorrow};
     use time::{Month, UtcOffset};
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
     fn from_date_test() {
@@ -219,7 +219,7 @@ mod testing {
         assert_eq!(parse_date("1993-04-10", UtcOffset::UTC).unwrap(), expected);
     }
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<Error>();
     }
     #[test]

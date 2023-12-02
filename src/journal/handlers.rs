@@ -11,7 +11,7 @@ use time::formatting::Formattable;
 use time::OffsetDateTime;
 
 pub fn new_entry(
-    entry: Entry,
+    entry: &Entry,
     journal_path: &PathBuf,
     at: OffsetDateTime,
     time_format_descriptor_for_file_name: &(impl Formattable + ?Sized),
@@ -67,7 +67,7 @@ pub fn list_entries(
 
 pub fn edit_last_entry(
     journal_path: &PathBuf,
-    book: Book,
+    book: &Book,
     editor: String,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
@@ -97,8 +97,8 @@ pub fn edit_last_entry(
 
 pub fn edit_specific_entry(
     journal_path: &PathBuf,
-    specifier: String,
-    book: Book,
+    specifier: &str,
+    book: &Book,
     editor: String,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
@@ -106,7 +106,7 @@ pub fn edit_specific_entry(
     let ent_path: Vec<PathBuf> = book
         .entries
         .iter()
-        .filter(|x| x.file_name.contains(&specifier))
+        .filter(|x| x.file_name.contains(specifier))
         .map(|ent| journal_path.join(&ent.file_name))
         .collect();
 
@@ -122,7 +122,7 @@ pub fn edit_specific_entry(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
             files_to_add: vec![journal_path.to_owned()],
-            message: "feat(journal): edit the few entries".to_string(),
+            message: "feat(journal): edit the few entries".to_owned(),
         }),
         true,
     );
@@ -177,7 +177,7 @@ pub fn edit_specific_entry(
 pub fn edit_all_entries(
     journal_path: &PathBuf,
     editor: String,
-    book: Book,
+    book: &Book,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
 
@@ -193,7 +193,7 @@ pub fn edit_all_entries(
         EffectKind::GitHook(GitHookOpts {
             start_path: journal_path.to_owned(),
             files_to_add: vec![journal_path.to_owned()],
-            message: "feat(journal): edit bunch of entries".to_string(),
+            message: "feat(journal): edit bunch of entries".to_owned(),
         }),
         true,
     );

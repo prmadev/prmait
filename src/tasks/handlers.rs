@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use color_eyre::owo_colors::OwoColorize;
 use time::formatting::Formattable;
@@ -9,23 +9,23 @@ use crate::files::ToFileName;
 
 use super::Result;
 use super::{
-    task::{Task, TaskState},
+    task::{State, Task},
     tasklist::TaskList,
     Error,
 };
 
 pub fn new_task(
-    task_dir: PathBuf,
-    t: Task,
+    task_dir: &Path,
+    t: &Task,
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
     let file_name = t.to_file_name(time_format_descriptor)?;
-    let file_path = task_dir.clone().join(&file_name);
+    let file_path = task_dir.join(&file_name);
     let mut effects = EffectMachine::default();
 
     effects.add(
         EffectKind::CreateDir(CreateDirOpts {
-            folder_path: task_dir.clone(),
+            folder_path: task_dir.to_path_buf(),
             ok_if_exists: true,
         }),
         false,
@@ -44,7 +44,7 @@ pub fn new_task(
     );
     effects.add(
         EffectKind::GitHook(crate::effects::GitHookOpts {
-            start_path: task_dir,
+            start_path: task_dir.to_path_buf(),
             files_to_add: vec![file_path],
             message: format!("feat(tasks): add new task file  {}", t.id),
         }),
@@ -54,10 +54,10 @@ pub fn new_task(
 }
 
 pub fn mark_task_as(
-    task_dir: PathBuf,
-    tasks_list: TaskList,
-    state: TaskState,
-    task_identifier: Vec<i64>,
+    task_dir: &Path,
+    tasks_list: &TaskList,
+    state: &State,
+    task_identifier: &[i64],
 ) -> Result<EffectMachine> {
     task_identifier
         .iter()
@@ -68,7 +68,7 @@ pub fn mark_task_as(
                 let Some(last_state) = x.task.state_log.last() else {
                     return false;
                 };
-                last_state.ne(&state)
+                last_state.ne(state)
             });
 
             if tasks.len() > 1 {
@@ -78,7 +78,7 @@ pub fn mark_task_as(
             let mut the_task_description = tasks.get(0).ok_or(Error::NoTasksFound)?.to_owned();
             the_task_description.task.state_log.push(state.clone());
 
-            let file_path = task_dir.clone().join(&the_task_description.file_name);
+            let file_path = task_dir.join(&the_task_description.file_name);
             let new_file_content = serde_json::to_string_pretty(&the_task_description.task)
                 .map_err(|e| {
                     Error::FileCouldNotSerializeEntryIntoJson(e, the_task_description.file_name)
@@ -95,7 +95,7 @@ pub fn mark_task_as(
             );
             effects.add(
                 EffectKind::GitHook(crate::effects::GitHookOpts {
-                    start_path: task_dir.clone(),
+                    start_path: task_dir.to_owned(),
                     files_to_add: vec![file_path.clone()],
                     message: format!(
                         "feat: updated task {} to the new state {}",
@@ -111,7 +111,7 @@ pub fn mark_task_as(
 pub fn todays_task(
     all_tasks: TaskList,
     current_date: Date,
-    of_project: Option<String>,
+    of_project: &Option<String>,
     current_time: OffsetDateTime,
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<()> {
@@ -120,7 +120,7 @@ pub fn todays_task(
         let Some(last) = t.task.state_log.last() else {
             return false;
         };
-        if !matches!(last, TaskState::ToDo(_)) {
+        if !matches!(last, State::ToDo(_)) {
             return false;
         };
         let Some(bst) = t.task.start else {
@@ -134,7 +134,7 @@ pub fn todays_task(
         let Some(last) = t.task.state_log.last() else {
             return false;
         };
-        if !matches!(last, TaskState::ToDo(_)) {
+        if !matches!(last, State::ToDo(_)) {
             return false;
         };
         let Some(deadlined) = t.task.end else {
@@ -217,12 +217,12 @@ fn println_ok_or_eprintln(x: Result<String>) {
 pub fn tasks_by_state<F>(
     all_tasks: TaskList,
     task_state_finder: F,
-    of_project: Option<String>,
+    of_project: &Option<String>,
     current_time: OffsetDateTime,
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<()>
 where
-    F: Fn(&TaskState) -> bool,
+    F: Fn(&State) -> bool,
 {
     let mut chosen_tasks = all_tasks.0;
     chosen_tasks.retain(|task_description| {

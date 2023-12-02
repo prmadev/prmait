@@ -45,10 +45,10 @@ pub enum Error {
 mod testing {
     use super::*;
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<Error>();
     }
 }

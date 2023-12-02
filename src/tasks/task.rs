@@ -15,7 +15,7 @@ pub struct Task {
     pub id: i64,
     #[serde(with = "time::serde::rfc3339")]
     pub time_created: OffsetDateTime,
-    pub state_log: Vec<TaskState>,
+    pub state_log: Vec<State>,
     pub title: String,
     pub description: Option<String>,
     pub area: Option<Area>,
@@ -100,10 +100,8 @@ impl Task {
 
         Ok(all_buf)
     }
-}
-
-impl Task {
-    #[must_use] pub fn current_state(&self) -> Option<&TaskState> {
+    #[must_use]
+    pub fn current_state(&self) -> Option<&State> {
         self.state_log.last()
     }
 }
@@ -114,7 +112,7 @@ impl TryFrom<&PathBuf> for Task {
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
         let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let task: Task = serde_json::from_str(&content)
+        let task: Self = serde_json::from_str(&content)
             .map_err(|e| Error::FileCouldNotDeserializeEntryFromJson(e, content))?;
         Ok(task)
     }
@@ -125,7 +123,7 @@ impl TryFrom<PathBuf> for Task {
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let content = fs_extra::file::read_to_string(value).map_err(Error::FileCouldNotBeRead)?;
 
-        let task: Task = serde_json::from_str(&content)
+        let task: Self = serde_json::from_str(&content)
             .map_err(|e| Error::FileCouldNotDeserializeEntryFromJson(e, content))?;
         Ok(task)
     }
@@ -159,7 +157,7 @@ impl ToFileName for Task {
 // }
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TaskState {
+pub enum State {
     Backlog(#[serde(with = "time::serde::rfc3339")] OffsetDateTime),
     Abandoned(
         #[serde(with = "time::serde::rfc3339")] OffsetDateTime,
@@ -174,16 +172,16 @@ pub enum TaskState {
 //         Self::ToDo(Local::now())
 //     }
 // }
-impl Display for TaskState {
+impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                TaskState::Backlog(_) => "⚏ BKLG",
-                TaskState::Abandoned(_, _) => "☓ ABND",
-                TaskState::Done(_) => "☑ DONE",
-                TaskState::ToDo(_) => "☐ TODO",
+                Self::Backlog(_) => "⚏ BKLG",
+                Self::Abandoned(_, _) => "☓ ABND",
+                Self::Done(_) => "☑ DONE",
+                Self::ToDo(_) => "☐ TODO",
             }
         )
     }
@@ -203,9 +201,9 @@ impl Display for Area {
             f,
             "{}",
             match self {
-                Area::Work => "work",
-                Area::Home => "home",
-                Area::Personal => "personal",
+                Self::Work => "work",
+                Self::Home => "home",
+                Self::Personal => "personal",
             }
         )
     }
@@ -237,10 +235,10 @@ pub enum AreaParsingError {
 mod testing {
     use super::*;
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<Task>();
     }
 }

@@ -26,7 +26,7 @@ impl TryFrom<&PathBuf> for TaskDescription {
             .to_str()
             .ok_or(Error::FileNameHasInvalidCharacters)?
             .to_owned();
-        Ok(TaskDescription { task, file_name })
+        Ok(Self { task, file_name })
     }
 }
 impl TryFrom<PathBuf> for TaskDescription {
@@ -40,7 +40,7 @@ impl TryFrom<PathBuf> for TaskDescription {
             .to_str()
             .ok_or(Error::FileNameHasInvalidCharacters)?
             .to_owned();
-        Ok(TaskDescription { task, file_name })
+        Ok(Self { task, file_name })
     }
 }
 
@@ -57,17 +57,17 @@ impl TryFrom<&PathBuf> for TaskList {
             .map(TaskDescription::try_from)
             .try_fold(vec![], fold_or_err)?;
         task_list.sort();
-        Ok(TaskList(task_list))
+        Ok(Self(task_list))
     }
 }
 #[cfg(test)]
 mod testing {
     use super::*;
 
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
-    fn normal_types() {
+    const fn normal_types() {
         is_normal::<TaskList>();
     }
 }
