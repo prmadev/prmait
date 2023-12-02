@@ -11,6 +11,8 @@ pub enum EffectKind {
     CreateDir(CreateDirOpts),
     GitHook(GitHookOpts),
     OpenInEditor(OpenInEditorOpts),
+    PrintToStdOut(String),
+    PrintToStdErr(String),
 }
 
 impl EffectKind {
@@ -20,6 +22,8 @@ impl EffectKind {
             Self::CreateDir(opts) => dir_creator(opts),
             Self::GitHook(opts) => git_hooker(opts),
             Self::OpenInEditor(opts) => editor_opener(opts),
+            Self::PrintToStdOut(text) => Ok(println!("{text}")), // I know :D!
+            Self::PrintToStdErr(text) => Ok(eprintln!("{text}")), // I know :D!
         }
     }
 }

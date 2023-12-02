@@ -4,7 +4,7 @@ use color_eyre::owo_colors::OwoColorize;
 use time::formatting::Formattable;
 use time::{Date, OffsetDateTime};
 
-use crate::effects::{CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts};
+use crate::effects::{CreateDirOpts, Effect, EffectKind, EffectMachine, FileWriterOpts};
 use crate::files::ToFileName;
 
 use super::Result;
@@ -114,7 +114,9 @@ pub fn todays_task(
     of_project: &Option<String>,
     current_time: OffsetDateTime,
     time_format_descriptor: &(impl Formattable + ?Sized),
-) -> Result<()> {
+) -> Result<EffectMachine> {
+    let mut effects = EffectMachine::default();
+
     let mut todays_tasks_starting = all_tasks.0.clone();
     todays_tasks_starting.retain(|t| {
         let Some(last) = t.task.state_log.last() else {
@@ -158,13 +160,17 @@ pub fn todays_task(
         let Some(proj) = &of_project else { return true };
         t.task.projects.contains(proj)
     });
+    effects.add(EffectKind::PrintToStdOut("\n".to_owned()), false);
 
     if !todays_tasks_starting.is_empty() {
-        println!();
-        println!(
-            "{:61}",
-            "Starting from today:".bold().black().on_bright_blue()
+        effects.add(
+            EffectKind::PrintToStdOut(format!(
+                "\n{:61}",
+                "Starting from today:".bold().black().on_bright_blue()
+            )),
+            false,
         );
+
         todays_tasks_starting
             .iter()
             .map(|x| {
@@ -174,11 +180,17 @@ pub fn todays_task(
                     time_format_descriptor,
                 )
             })
-            .for_each(println_ok_or_eprintln);
+            .map(println_ok_or_eprintln)
+            .for_each(|ef| effects.add(ef.effect_kind, ef.forgiving));
     }
     if !todays_tasks_deadline.is_empty() {
-        println!();
-        println!("{:61}", "Deadline at today:".bold().black().on_red());
+        effects.add(
+            EffectKind::PrintToStdOut(format!(
+                "\n{:61}",
+                "Deadline at today:".bold().black().on_red()
+            )),
+            false,
+        );
         todays_tasks_deadline
             .iter()
             .map(|x| {
@@ -188,11 +200,17 @@ pub fn todays_task(
                     time_format_descriptor,
                 )
             })
-            .for_each(println_ok_or_eprintln);
+            .map(println_ok_or_eprintln)
+            .for_each(|ef| effects.add(ef.effect_kind, ef.forgiving));
     }
     if !todays_tasks_overdue.is_empty() {
-        println!();
-        println!("{:61}", "overdue at today:".bold().black().on_red());
+        effects.add(
+            EffectKind::PrintToStdOut(format!(
+                "\n{:61}",
+                "overdue at today:".bold().black().on_red()
+            )),
+            false,
+        );
         todays_tasks_deadline
             .iter()
             .map(|x| {
@@ -202,16 +220,23 @@ pub fn todays_task(
                     time_format_descriptor,
                 )
             })
-            .for_each(println_ok_or_eprintln);
+            .map(println_ok_or_eprintln)
+            .for_each(|ef| effects.add(ef.effect_kind, ef.forgiving));
     }
 
-    Ok(())
+    Ok(effects)
 }
 
-fn println_ok_or_eprintln(x: Result<String>) {
+fn println_ok_or_eprintln(x: Result<String>) -> Effect {
     match x {
-        Ok(f) => println!("{f}"),
-        Err(e) => eprintln!("{e}"),
+        Ok(f) => Effect {
+            effect_kind: EffectKind::PrintToStdOut(f),
+            forgiving: false,
+        },
+        Err(e) => Effect {
+            effect_kind: EffectKind::PrintToStdErr(e.to_string()),
+            forgiving: false,
+        },
     }
 }
 pub fn tasks_by_state<F>(
@@ -220,10 +245,12 @@ pub fn tasks_by_state<F>(
     of_project: &Option<String>,
     current_time: OffsetDateTime,
     time_format_descriptor: &(impl Formattable + ?Sized),
-) -> Result<()>
+) -> Result<EffectMachine>
 where
     F: Fn(&State) -> bool,
 {
+    let mut effects = EffectMachine::default();
+
     let mut chosen_tasks = all_tasks.0;
     chosen_tasks.retain(|task_description| {
         let Some(last) = task_description.task.state_log.last() else {
@@ -239,11 +266,13 @@ where
     });
 
     if !chosen_tasks.is_empty() {
-        println!(
-            "{:61}",
-            "tasks with that criteria:".bold().black().on_bright_blue()
+        effects.add(
+            EffectKind::PrintToStdOut(format!(
+                "{:61}",
+                "tasks with that criteria:".bold().black().on_bright_blue()
+            )),
+            false,
         );
-
         chosen_tasks
             .iter()
             .map(|x| {
@@ -253,10 +282,11 @@ where
                     time_format_descriptor,
                 )
             })
-            .for_each(println_ok_or_eprintln);
+            .map(println_ok_or_eprintln)
+            .for_each(|ef| effects.add(ef.effect_kind, ef.forgiving));
     }
 
-    Ok(())
+    Ok(effects)
 }
 
 fn try_print_colorful_with_current_duration(

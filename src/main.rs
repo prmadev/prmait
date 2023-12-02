@@ -47,216 +47,226 @@ async fn main() -> Result<()> {
         .ok()
         .and_then(Result::ok);
 
-    match args.command {
-        Some(general_command) => match general_command {
-            Commands::J { journal_command } | Commands::Journal { journal_command } => {
-                match journal_command {
-                    JournalCommands::New {
-                        entry,
-                        tag,
-                        mood,
-                        people,
-                    } => {
-                        let efs = journal::handlers::new_entry(
-                            &journal::Entry {
-                                at: now,
-                                body: Arc::new(entry),
-                                tag,
-                                mood,
-                                people,
-                            },
-                            &config.journal_path()?,
-                            now,
-                            &config.journal_file_formatting()?,
-                        )?;
+    let Some(general_command) = args.command else {
+        return Ok(());
+    };
 
-                        efs.run()?;
-                    }
-                    JournalCommands::List => journal::handlers::list_entries(
-                        &config.journal_path()?,
-                        &well_known::Rfc3339,
-                    )?,
-                    JournalCommands::Edit(edit_type) => match edit_type {
-                        JournalEditCommands::Last => {
-                            let efs = journal::handlers::edit_last_entry(
-                                &config.journal_path()?,
-                                &journal::Book::try_from(&config.journal_path()?)?,
-                                editor(env::var_os("EDITOR"))?,
-                            )?;
-                            efs.run()?;
-                        }
-                        JournalEditCommands::All => {
-                            let efs = journal::handlers::edit_all_entries(
-                                &config.journal_path()?,
-                                editor(env::var_os("EDITOR"))?,
-                                &journal::Book::try_from(&config.journal_path()?)?,
-                            )?;
-                            efs.run()?;
-                        }
-                        JournalEditCommands::Specific { item } => {
-                            let efs = journal::handlers::edit_specific_entry(
-                                &config.journal_path()?,
-                                &item,
-                                &journal::Book::try_from(&config.journal_path()?)?,
-                                editor(env::var_os("EDITOR"))?,
-                            )?;
-                            efs.run()?;
-                        }
-                    },
-                    // JournalCommands::Delete => journal::handlers::delete_interactive(
-                    //     &config.journal_path()?,
-                    //     20,
-                    //     journal::Book::try_from(&config.journal_path()?)?,
-                    //     &well_known::Rfc3339,
-                    // )?,
-                }
-            }
-
-            Commands::T { task_command } | Commands::Task { task_command } => match task_command {
-                TaskCommands::New {
-                    title,
-                    description,
-                    area,
+    match general_command {
+        Commands::J { journal_command } | Commands::Journal { journal_command } => {
+            match journal_command {
+                JournalCommands::New {
+                    entry,
+                    tag,
+                    mood,
                     people,
-                    deadline,
-                    best_starting_time,
-                    projects,
                 } => {
-                    let end = deadline
-                        .map(|s| timeutils::parse_date(&s, time_offset))
-                        .transpose()?;
+                    let efs = journal::handlers::new_entry(
+                        &journal::Entry {
+                            at: now,
+                            body: Arc::new(entry),
+                            tag,
+                            mood,
+                            people,
+                        },
+                        &config.journal_path()?,
+                        now,
+                        &config.journal_file_formatting()?,
+                    )?;
 
-                    let start = best_starting_time
-                        .map(|s| timeutils::parse_date(&s, time_offset))
-                        .transpose()?;
-
-                    let projects = {
-                        let mut buf = projects.unwrap_or(vec![]);
-                        if let Some(current_folder_project) = project {
-                            buf.push(current_folder_project);
-                        };
-                        buf
-                    };
-
-                    let t = Task {
-                        id: now.unix_timestamp(),
-                        time_created: now,
-                        state_log: vec![State::ToDo(now)],
-                        title,
-                        description,
-                        area,
-                        people: people.unwrap_or(vec![]),
-                        projects,
-                        start,
-                        end,
-                    };
-
-                    let efs = tasks::handlers::new_task(
-                        &config.task_path()?,
-                        &t,
-                        &config.task_file_formatting()?,
+                    efs.run()?;
+                }
+                JournalCommands::List => {
+                    let efs = journal::handlers::list_entries(
+                        &journal::Book::try_from(&config.journal_path()?)?,
+                        &well_known::Rfc3339,
                     )?;
                     efs.run()?;
                 }
-                TaskCommands::List(task_list_command) => {
-                    let tasklist = TaskList::try_from(&task_dir)?;
-                    match task_list_command {
-                        TaskListCommand::Today => {
+                JournalCommands::Edit(edit_type) => match edit_type {
+                    JournalEditCommands::Last => {
+                        let efs = journal::handlers::edit_last_entry(
+                            &config.journal_path()?,
+                            &journal::Book::try_from(&config.journal_path()?)?,
+                            editor(env::var_os("EDITOR"))?,
+                        )?;
+                        efs.run()?;
+                    }
+                    JournalEditCommands::All => {
+                        let efs = journal::handlers::edit_all_entries(
+                            &config.journal_path()?,
+                            editor(env::var_os("EDITOR"))?,
+                            &journal::Book::try_from(&config.journal_path()?)?,
+                        )?;
+                        efs.run()?;
+                    }
+                    JournalEditCommands::Specific { item } => {
+                        let efs = journal::handlers::edit_specific_entry(
+                            &config.journal_path()?,
+                            &item,
+                            &journal::Book::try_from(&config.journal_path()?)?,
+                            editor(env::var_os("EDITOR"))?,
+                        )?;
+                        efs.run()?;
+                    }
+                },
+                // JournalCommands::Delete => journal::handlers::delete_interactive(
+                //     &config.journal_path()?,
+                //     20,
+                //     journal::Book::try_from(&config.journal_path()?)?,
+                //     &well_known::Rfc3339,
+                // )?,
+            }
+        }
+
+        Commands::T { task_command } | Commands::Task { task_command } => match task_command {
+            TaskCommands::New {
+                title,
+                description,
+                area,
+                people,
+                deadline,
+                best_starting_time,
+                projects,
+            } => {
+                let end = deadline
+                    .map(|s| timeutils::parse_date(&s, time_offset))
+                    .transpose()?;
+
+                let start = best_starting_time
+                    .map(|s| timeutils::parse_date(&s, time_offset))
+                    .transpose()?;
+
+                let projects = {
+                    let mut buf = projects.unwrap_or(vec![]);
+                    if let Some(current_folder_project) = project {
+                        buf.push(current_folder_project);
+                    };
+                    buf
+                };
+
+                let t = Task {
+                    id: now.unix_timestamp(),
+                    time_created: now,
+                    state_log: vec![State::ToDo(now)],
+                    title,
+                    description,
+                    area,
+                    people: people.unwrap_or(vec![]),
+                    projects,
+                    start,
+                    end,
+                };
+
+                let efs = tasks::handlers::new_task(
+                    &config.task_path()?,
+                    &t,
+                    &config.task_file_formatting()?,
+                )?;
+                efs.run()?;
+            }
+            TaskCommands::List(task_list_command) => {
+                let tasklist = TaskList::try_from(&task_dir)?;
+                match task_list_command {
+                    TaskListCommand::Today => {
+                        let efs =
                             todays_task(tasklist, now.date(), &project, now, &well_known::Rfc3339)?;
-                        }
-                        TaskListCommand::Todo => {
-                            tasks_by_state(
-                                tasklist,
-                                |x| matches!(x, &State::ToDo(_)),
-                                &project,
-                                now,
-                                &well_known::Rfc3339,
-                            )?;
-                        }
-                        TaskListCommand::Done => {
-                            tasks_by_state(
-                                tasklist,
-                                |x| matches!(x, &State::Done(_)),
-                                &project,
-                                now,
-                                &well_known::Rfc3339,
-                            )?;
-                        }
-                        TaskListCommand::Abandoned => {
-                            tasks_by_state(
-                                tasklist,
-                                |x| matches!(x, State::Abandoned(_, _)),
-                                &project,
-                                now,
-                                &well_known::Rfc3339,
-                            )?;
-                        }
-                        TaskListCommand::Backlogged => {
-                            tasks_by_state(
-                                tasklist,
-                                |x| matches!(x, State::Backlog(_)),
-                                &project,
-                                now,
-                                &well_known::Rfc3339,
-                            )?;
-                        }
+                        efs.run()?;
+                    }
+                    TaskListCommand::Todo => {
+                        let efs = tasks_by_state(
+                            tasklist,
+                            |x| matches!(x, &State::ToDo(_)),
+                            &project,
+                            now,
+                            &well_known::Rfc3339,
+                        )?;
+                        efs.run()?;
+                    }
+                    TaskListCommand::Done => {
+                        let efs = tasks_by_state(
+                            tasklist,
+                            |x| matches!(x, &State::Done(_)),
+                            &project,
+                            now,
+                            &well_known::Rfc3339,
+                        )?;
+                        efs.run()?;
+                    }
+                    TaskListCommand::Abandoned => {
+                        let efs = tasks_by_state(
+                            tasklist,
+                            |x| matches!(x, State::Abandoned(_, _)),
+                            &project,
+                            now,
+                            &well_known::Rfc3339,
+                        )?;
+                        efs.run()?;
+                    }
+                    TaskListCommand::Backlogged => {
+                        let efs = tasks_by_state(
+                            tasklist,
+                            |x| matches!(x, State::Backlog(_)),
+                            &project,
+                            now,
+                            &well_known::Rfc3339,
+                        )?;
+                        efs.run()?;
                     }
                 }
-                TaskCommands::Done { id } => {
-                    let task_list = TaskList::try_from(&task_dir)?;
-                    let effects = mark_task_as(&task_dir, &task_list, &State::Done(now), &id)?;
-                    effects.run()?;
-                }
-                TaskCommands::Backlog { id } => {
-                    let task_list = TaskList::try_from(&task_dir)?;
-                    let effects = mark_task_as(&task_dir, &task_list, &State::Backlog(now), &id)?;
-                    effects.run()?;
-                }
-                TaskCommands::Abandon { id, content } => {
-                    let task_list = TaskList::try_from(&task_dir)?;
-                    let effects =
-                        mark_task_as(&task_dir, &task_list, &State::Abandoned(now, content), &id)?;
-                    effects.run()?;
-                }
-                TaskCommands::Todo { id } => {
-                    let task_list = TaskList::try_from(&task_dir)?;
-                    let effects = mark_task_as(&task_dir, &task_list, &State::ToDo(now), &id)?;
-                    effects.run()?;
-                }
-            },
-            Commands::Completions { shell } => {
-                shell.generate(&mut Args::command(), &mut std::io::stdout());
             }
-            Commands::River => {
-                let river_config = &config
-                    .river
-                    .ok_or(Report::msg("river settings not found"))?;
-                river::run(
-                    river_config.border_width,
-                    &river_config.colors,
-                    &river_config.hardware,
-                    &river_config.startups,
-                    &river_config.apps,
-                )
-                .await?;
+            TaskCommands::Done { id } => {
+                let task_list = TaskList::try_from(&task_dir)?;
+                let effects = mark_task_as(&task_dir, &task_list, &State::Done(now), &id)?;
+                effects.run()?;
             }
-            Commands::Tasks => {
-                let task_dir = config.task_path()?;
-                let tasklist = TaskList::try_from(&task_dir)?;
-                let project = git::repo_root(&env::current_dir()?)
-                    .map(|x| git::repo_directory_name(&x))
-                    .ok()
-                    .and_then(Result::ok);
-                tasks_by_state(
-                    tasklist,
-                    |x| matches!(x, &State::ToDo(_)),
-                    &project,
-                    now,
-                    &well_known::Rfc3339,
-                )?;
+            TaskCommands::Backlog { id } => {
+                let task_list = TaskList::try_from(&task_dir)?;
+                let effects = mark_task_as(&task_dir, &task_list, &State::Backlog(now), &id)?;
+                effects.run()?;
+            }
+            TaskCommands::Abandon { id, content } => {
+                let task_list = TaskList::try_from(&task_dir)?;
+                let effects =
+                    mark_task_as(&task_dir, &task_list, &State::Abandoned(now, content), &id)?;
+                effects.run()?;
+            }
+            TaskCommands::Todo { id } => {
+                let task_list = TaskList::try_from(&task_dir)?;
+                let effects = mark_task_as(&task_dir, &task_list, &State::ToDo(now), &id)?;
+                effects.run()?;
             }
         },
-        None => unreachable!("because of clap, it should not be possible to reach this point"),
+        Commands::Completions { shell } => {
+            shell.generate(&mut Args::command(), &mut std::io::stdout());
+        }
+        Commands::River => {
+            let river_config = &config
+                .river
+                .ok_or(Report::msg("river settings not found"))?;
+            river::run(
+                river_config.border_width,
+                &river_config.colors,
+                &river_config.hardware,
+                &river_config.startups,
+                &river_config.apps,
+            )
+            .await?;
+        }
+        Commands::Tasks => {
+            let task_dir = config.task_path()?;
+            let tasklist = TaskList::try_from(&task_dir)?;
+            let project = git::repo_root(&env::current_dir()?)
+                .map(|x| git::repo_directory_name(&x))
+                .ok()
+                .and_then(Result::ok);
+            tasks_by_state(
+                tasklist,
+                |x| matches!(x, &State::ToDo(_)),
+                &project,
+                now,
+                &well_known::Rfc3339,
+            )?;
+        }
     }
 
     Ok(())

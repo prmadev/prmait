@@ -55,14 +55,16 @@ pub fn new_entry(
 }
 
 pub fn list_entries(
-    journal_path: &PathBuf,
+    book: &Book,
     time_format_descriptor: &(impl Formattable + ?Sized),
-) -> Result<()> {
-    let book = Book::try_from(journal_path)?;
+) -> Result<EffectMachine> {
+    let mut efs = EffectMachine::default();
+    efs.add(
+        EffectKind::PrintToStdOut(book.table_list(time_format_descriptor)?.clone()),
+        false,
+    );
 
-    println!("{}", book.table_list(time_format_descriptor)?);
-
-    Ok(())
+    Ok(efs)
 }
 
 pub fn edit_last_entry(
