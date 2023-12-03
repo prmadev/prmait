@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::PathBuf, process::Command};
+use std::{collections, ffi::OsString, path::PathBuf};
 
 use clap_complete_command::Shell;
 use tracing::{debug, error, info, trace};
@@ -15,6 +15,7 @@ pub enum EffectKind {
     PrintToStdErr(String),
     GenerateShellCompletion(Shell, clap::Command),
     RunAsyncMachine(EffectMachine),
+    RunExternalCommand(String, Vec<String>, collections::HashMap<String, String>),
 }
 
 impl EffectKind {
@@ -29,6 +30,16 @@ impl EffectKind {
             Self::GenerateShellCompletion(shell, cmd) => {
                 let mut c = cmd.clone();
                 shell.generate(&mut c, &mut std::io::stdout());
+                Ok(())
+            }
+            Self::RunExternalCommand(cmd, args, envs) => {
+                std::process::Command::new(cmd)
+                    .args(args)
+                    .envs(envs)
+                    .spawn()
+                    .map_err(Error::CouldNotSpawnTheTask)?
+                    .wait_with_output()
+                    .map_err(Error::TaskReturnedError)?;
                 Ok(())
             }
             Self::RunAsyncMachine(e) => tokio::runtime::Builder::new_multi_thread()
@@ -130,6 +141,10 @@ pub enum Error {
     EditorError(std::io::Error),
     #[error("could not build async runtime: {0}")]
     AsyncRuntimeCouldNotBeBuilt(tokio::io::Error),
+    #[error("could not spawn the task: {0}")]
+    CouldNotSpawnTheTask(std::io::Error),
+    #[error("could not spawn the task: {0}")]
+    TaskReturnedError(std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -144,7 +159,7 @@ pub struct OpenInEditorOpts {
 #[tracing::instrument]
 fn editor_opener(opts: OpenInEditorOpts) -> Result<()> {
     trace!(stage = "starting to edit the file");
-    Command::new(opts.editor)
+    std::process::Command::new(opts.editor)
         .args(opts.files_to_edit)
         .status()
         .map_err(Error::EditorError)?;
