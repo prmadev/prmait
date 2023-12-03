@@ -68,25 +68,31 @@ impl Book {
         table.set_content_arrangement(ContentArrangement::Dynamic);
         self.entries
             .iter()
-            .try_fold((), |(), entry| -> Result<(), Error> {
+            .try_fold((), |(), entry_desc| -> Result<(), Error> {
+                let bg_color = match entry_desc.entry.mood {
+                    super::Mood::Good => comfy_table::Color::Green,
+                    super::Mood::Bad => comfy_table::Color::Red,
+                    super::Mood::Neutral => comfy_table::Color::White,
+                };
                 table.add_row(vec![
-                    Cell::new((entry.entry.at.format(time_format_descriptor)?).clone())
-                        .bg(comfy_table::Color::White)
+                    Cell::new((entry_desc.entry.at.format(time_format_descriptor)?).clone())
+                        .bg(bg_color)
                         .fg(comfy_table::Color::Black),
-                    Cell::new(format!("{}", &entry.entry.body)),
-                    Cell::new(&entry.file_name).fg(comfy_table::Color::Blue),
-                    if entry.entry.tag.is_empty() {
-                        Cell::new("")
-                    } else {
-                        Cell::new(
-                            entry
-                                .entry
-                                .tag
-                                .iter()
-                                .fold(String::new(), |accu, item| format!("{accu}, {item}")),
-                        )
-                        .fg(comfy_table::Color::Blue)
-                    },
+                    Cell::new(format!("{}", &entry_desc.entry.body)).fg(bg_color),
+                    // Cell::new(&entry.file_name).fg(comfy_table::Color::Blue),
+                    // if entry.entry.tag.is_empty() {
+                    //     Cell::new("")
+                    // } else {
+                    //     Cell::new(
+                    //         entry
+                    //             .entry
+                    //             .tag
+                    //             .iter()
+                    //             .fold(String::new(), |accu, item| format!("{accu}#{item} "))
+                    //             .italic(),
+                    //     )
+                    //     .fg(comfy_table::Color::Blue)
+                    // },
                 ]);
                 Ok(())
             })?;
