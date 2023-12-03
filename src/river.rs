@@ -10,8 +10,8 @@ pub fn run(
     apps: &Apps,
 ) -> Result<EffectMachine, Error> {
     let mut efs = EffectMachine::default();
-    let river_config_efm = river_config(border_width, apps, colors, hardware);
 
+    let river_config_efm = river_config(border_width, apps, colors, hardware);
     let start_up_efm = startup_commands
         .iter()
         .cloned()
@@ -22,6 +22,7 @@ pub fn run(
             efm.add(e, false);
             efm
         });
+
     efs.add(EffectKind::RunAsyncMachine(river_config_efm), false);
     efs.add(EffectKind::RunAsyncMachine(tags()), false);
     efs.add(EffectKind::RunAsyncMachine(start_up_efm), true);

@@ -9,7 +9,7 @@ use crate::git;
 pub enum EffectKind {
     WriteToFile(FileWriterOpts),
     CreateDir(CreateDirOpts),
-    GitHook(GitHookOpts),
+    // GitHook(GitHookOpts),
     OpenInEditor(OpenInEditorOpts),
     PrintToStdOut(String),
     PrintToStdErr(String),
@@ -23,7 +23,7 @@ impl EffectKind {
         match self {
             Self::WriteToFile(opts) => file_writer(opts),
             Self::CreateDir(opts) => dir_creator(opts),
-            Self::GitHook(opts) => git_hooker(opts),
+            // Self::GitHook(opts) => git_hooker(opts),
             Self::OpenInEditor(opts) => editor_opener(opts),
             Self::PrintToStdOut(text) => Ok(println!("{text}")), // I know :D!
             Self::PrintToStdErr(text) => Ok(eprintln!("{text}")), // I know :D!
@@ -145,6 +145,8 @@ pub enum Error {
     CouldNotSpawnTheTask(std::io::Error),
     #[error("could not spawn the task: {0}")]
     TaskReturnedError(std::io::Error),
+    #[error("repo dir includes non-standard characters")]
+    UnstandardPath,
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -241,21 +243,28 @@ pub struct GitHookOpts {
 }
 
 #[tracing::instrument]
-fn git_hooker(opts: GitHookOpts) -> Result<()> {
+fn git_hooker(opts: GitHookOpts) -> Result<EffectMachine> {
     trace!("starting with git_hooker");
-    let repo_root = git::repo_root(&opts.start_path).map_err(Error::GitError)?;
+    let rr = git::repo_root(&opts.start_path)
+        .map_err(Error::GitError)?
+        .into_os_string();
+
+    let repo_root = rr.to_str().ok_or(Error::UnstandardPath)?;
     trace!("found the repo_root {:#?}", repo_root);
 
-    let files: Vec<OsString> = opts
+    let files = opts
         .files_to_add
         .into_iter()
         .map(PathBuf::into_os_string)
-        .collect();
+        .map(OsString::into_string)
+        .map(|x| x.map_err(|_discarded| Error::UnstandardPath))
+        .try_fold(vec![], |mut a, f| {
+            a.push(f?);
+            Ok(a)
+        })?;
 
     trace!("doing the git hooks");
-    git::full_hook(repo_root.as_os_str(), &files, &opts.message).map_err(Error::GitError)?;
-    trace!("done with the hooks");
-    Ok(())
+    Ok(git::full_hook(repo_root, &files, &opts.message))
 }
 
 #[cfg(test)]

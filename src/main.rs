@@ -80,42 +80,59 @@ fn to_effect_machine(
                     tag,
                     mood,
                     people,
-                } => journal::handlers::new_entry(
-                    &journal::Entry {
-                        at: now,
-                        body: Arc::new(entry),
-                        tag,
-                        mood,
-                        people,
-                    },
-                    &config.journal_path()?,
-                    now,
-                    &config.journal_file_formatting()?,
-                )?,
+                } => {
+                    let repo_root = match git::repo_root(&config.journal_path()?)?.to_string_lossy()
+                    {
+                        std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                        std::borrow::Cow::Owned(s) => s,
+                    };
+                    journal::handlers::new_entry(
+                        &journal::Entry {
+                            at: now,
+                            body: Arc::new(entry),
+                            tag,
+                            mood,
+                            people,
+                        },
+                        &config.journal_path()?,
+                        &repo_root,
+                        now,
+                        &config.journal_file_formatting()?,
+                    )?
+                }
                 JournalCommands::List => journal::handlers::list_entries(
                     &journal::Book::try_from(&config.journal_path()?)?,
                     &well_known::Rfc3339,
                 )?,
-                JournalCommands::Edit(edit_type) => match edit_type {
-                    JournalEditCommands::Last => journal::handlers::edit_last_entry(
-                        &config.journal_path()?,
-                        &journal::Book::try_from(&config.journal_path()?)?,
-                        editor(env::var_os("EDITOR"))?,
-                    )?,
-                    JournalEditCommands::All => journal::handlers::edit_all_entries(
-                        &config.journal_path()?,
-                        editor(env::var_os("EDITOR"))?,
-                        &journal::Book::try_from(&config.journal_path()?)?,
-                    )?,
-                    JournalEditCommands::Specific { item } => {
-                        journal::handlers::edit_specific_entry(
+                JournalCommands::Edit(edit_type) => {
+                    let repo_root = match git::repo_root(&config.journal_path()?)?.to_string_lossy()
+                    {
+                        std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                        std::borrow::Cow::Owned(s) => s,
+                    };
+                    match edit_type {
+                        JournalEditCommands::Last => journal::handlers::edit_last_entry(
                             &config.journal_path()?,
-                            &item,
                             &journal::Book::try_from(&config.journal_path()?)?,
+                            &repo_root,
                             editor(env::var_os("EDITOR"))?,
-                        )?
+                        )?,
+                        JournalEditCommands::All => journal::handlers::edit_all_entries(
+                            editor(env::var_os("EDITOR"))?,
+                            &journal::Book::try_from(&config.journal_path()?)?,
+                            &repo_root,
+                        )?,
+                        JournalEditCommands::Specific { item } => {
+                            journal::handlers::edit_specific_entry(
+                                &config.journal_path()?,
+                                &item,
+                                &journal::Book::try_from(&config.journal_path()?)?,
+                                &repo_root,
+                                editor(env::var_os("EDITOR"))?,
+                            )?
+                        }
                     }
-                },
+                }
                 // JournalCommands::Delete => journal::handlers::delete_interactive(
                 //     &config.journal_path()?,
                 //     20,
@@ -163,10 +180,15 @@ fn to_effect_machine(
                     start,
                     end,
                 };
+                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
+                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                    std::borrow::Cow::Owned(s) => s,
+                };
 
                 tasks::handlers::new_task(
                     &config.task_path()?,
                     &t,
+                    &repo_root,
                     &config.task_file_formatting()?,
                 )?
             }
@@ -208,19 +230,41 @@ fn to_effect_machine(
             }
             TaskCommands::Done { id } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                mark_task_as(task_dir, &task_list, &State::Done(now), &id)?
+                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
+                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                    std::borrow::Cow::Owned(s) => s,
+                };
+                mark_task_as(task_dir, &task_list, &State::Done(now), &repo_root, &id)?
             }
             TaskCommands::Backlog { id } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                mark_task_as(task_dir, &task_list, &State::Backlog(now), &id)?
+                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
+                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                    std::borrow::Cow::Owned(s) => s,
+                };
+                mark_task_as(task_dir, &task_list, &State::Backlog(now), &repo_root, &id)?
             }
             TaskCommands::Abandon { id, content } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                mark_task_as(task_dir, &task_list, &State::Abandoned(now, content), &id)?
+                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
+                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                    std::borrow::Cow::Owned(s) => s,
+                };
+                mark_task_as(
+                    task_dir,
+                    &task_list,
+                    &State::Abandoned(now, content),
+                    &repo_root,
+                    &id,
+                )?
             }
             TaskCommands::Todo { id } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                mark_task_as(task_dir, &task_list, &State::ToDo(now), &id)?
+                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
+                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                    std::borrow::Cow::Owned(s) => s,
+                };
+                mark_task_as(task_dir, &task_list, &State::ToDo(now), &repo_root, &id)?
             }
         },
         Commands::Completions { shell } => {

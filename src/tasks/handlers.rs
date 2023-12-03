@@ -6,6 +6,7 @@ use time::{Date, OffsetDateTime};
 
 use crate::effects::{CreateDirOpts, Effect, EffectKind, EffectMachine, FileWriterOpts};
 use crate::files::ToFileName;
+use crate::git;
 
 use super::Result;
 use super::{
@@ -17,6 +18,7 @@ use super::{
 pub fn new_task(
     task_dir: &Path,
     t: &Task,
+    repo_root: &str,
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
     let file_name = t.to_file_name(time_format_descriptor)?;
@@ -42,14 +44,22 @@ pub fn new_task(
         }),
         false,
     );
+    let fp = match file_path.to_string_lossy() {
+        std::borrow::Cow::Borrowed(s) => s.to_owned(),
+        std::borrow::Cow::Owned(s) => s,
+    };
+
+    effects.add(git::add(repo_root, &[fp]), false);
     effects.add(
-        EffectKind::GitHook(crate::effects::GitHookOpts {
-            start_path: task_dir.to_path_buf(),
-            files_to_add: vec![file_path],
-            message: format!("feat(tasks): add new task file  {}", t.id),
-        }),
-        true,
+        git::commit(
+            repo_root,
+            &format!("feat(tasks): add new task file  {}", t.id),
+        ),
+        false,
     );
+    effects.add(git::pull(repo_root), false);
+    effects.add(git::push(repo_root), false);
+
     Ok(effects)
 }
 
@@ -57,6 +67,7 @@ pub fn mark_task_as(
     task_dir: &Path,
     tasks_list: &TaskList,
     state: &State,
+    repo_root: &str,
     task_identifier: &[i64],
 ) -> Result<EffectMachine> {
     task_identifier
@@ -93,17 +104,26 @@ pub fn mark_task_as(
                 }),
                 false,
             );
+
+            let fp = match file_path.to_string_lossy() {
+                std::borrow::Cow::Borrowed(s) => s.to_owned(),
+                std::borrow::Cow::Owned(s) => s,
+            };
+
+            effects.add(git::add(repo_root, &[fp]), false);
             effects.add(
-                EffectKind::GitHook(crate::effects::GitHookOpts {
-                    start_path: task_dir.to_owned(),
-                    files_to_add: vec![file_path.clone()],
-                    message: format!(
+                git::commit(
+                    repo_root,
+                    &format!(
                         "feat: updated task {} to the new state {}",
                         the_task_description.task.id, state,
                     ),
-                }),
-                true,
+                ),
+                false,
             );
+            effects.add(git::pull(repo_root), false);
+            effects.add(git::push(repo_root), false);
+
             Ok(effects)
         })
 }

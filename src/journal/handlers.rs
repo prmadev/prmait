@@ -1,18 +1,18 @@
 use super::Result;
-use crate::effects::{
-    CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts, GitHookOpts, OpenInEditorOpts,
-};
+use crate::effects::{CreateDirOpts, EffectKind, EffectMachine, FileWriterOpts, OpenInEditorOpts};
 use crate::files::ToFileName;
+use crate::git;
 use crate::journal::entry::Entry;
 use crate::journal::{Book, Error};
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use time::formatting::Formattable;
 use time::OffsetDateTime;
 
 pub fn new_entry(
     entry: &Entry,
     journal_path: &PathBuf,
+    repo_root: &str,
     at: OffsetDateTime,
     time_format_descriptor_for_file_name: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
@@ -42,14 +42,21 @@ pub fn new_entry(
         false,
     );
 
+    let fp = match file_path.to_string_lossy() {
+        std::borrow::Cow::Borrowed(s) => s.to_owned(),
+        std::borrow::Cow::Owned(s) => s,
+    };
+
+    effects.add(git::add(repo_root, &[fp]), false);
     effects.add(
-        EffectKind::GitHook(GitHookOpts {
-            start_path: journal_path.to_owned(),
-            files_to_add: vec![file_path],
-            message: format!("feat(journal): add new journal entry {file_name}"),
-        }),
-        true,
+        git::commit(
+            repo_root,
+            &format!("feat(journal): add new journal entry {file_name}"),
+        ),
+        false,
     );
+    effects.add(git::pull(repo_root), false);
+    effects.add(git::push(repo_root), false);
 
     Ok(effects)
 }
@@ -69,13 +76,15 @@ pub fn list_entries(
 }
 
 pub fn edit_last_entry(
-    journal_path: &PathBuf,
+    journal_path: &Path,
     book: &Book,
+    repo_root: &str,
     editor: String,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
 
-    let file_name = &book.entries.last().ok_or(Error::NoEntries)?.file_name;
+    let last_entry = &book.entries.last().ok_or(Error::NoEntries)?;
+    let file_name = &last_entry.file_name;
     let ent_path = journal_path.join(file_name);
 
     effects.add(
@@ -86,22 +95,30 @@ pub fn edit_last_entry(
         true,
     );
 
+    let fp = match ent_path.to_string_lossy() {
+        std::borrow::Cow::Borrowed(s) => s.to_owned(),
+        std::borrow::Cow::Owned(s) => s,
+    };
+
+    effects.add(git::add(repo_root, &[fp]), false);
     effects.add(
-        EffectKind::GitHook(GitHookOpts {
-            start_path: journal_path.to_owned(),
-            files_to_add: vec![journal_path.to_owned()],
-            message: format!("feat(journal): edit the entry {file_name}"),
-        }),
-        true,
+        git::commit(
+            repo_root,
+            &format!("feat(journal): edit the entry {file_name}"),
+        ),
+        false,
     );
+    effects.add(git::pull(repo_root), false);
+    effects.add(git::push(repo_root), false);
 
     Ok(effects)
 }
 
 pub fn edit_specific_entry(
-    journal_path: &PathBuf,
+    journal_path: &Path,
     specifier: &str,
     book: &Book,
+    repo_root: &str,
     editor: String,
 ) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
@@ -116,19 +133,26 @@ pub fn edit_specific_entry(
     effects.add(
         EffectKind::OpenInEditor(OpenInEditorOpts {
             editor,
-            files_to_edit: ent_path,
+            files_to_edit: ent_path.clone(),
         }),
         true,
     );
 
+    let fp: Vec<String> = ent_path
+        .into_iter()
+        .map(|x| match x.to_string_lossy() {
+            std::borrow::Cow::Borrowed(s) => s.to_owned(),
+            std::borrow::Cow::Owned(s) => s,
+        })
+        .collect();
+
+    effects.add(git::add(repo_root, &fp), false);
     effects.add(
-        EffectKind::GitHook(GitHookOpts {
-            start_path: journal_path.to_owned(),
-            files_to_add: vec![journal_path.to_owned()],
-            message: "feat(journal): edit the few entries".to_owned(),
-        }),
-        true,
+        git::commit(repo_root, "feat(journal): edit the few entries"),
+        false,
     );
+    effects.add(git::pull(repo_root), false);
+    effects.add(git::push(repo_root), false);
 
     Ok(effects)
 }
@@ -177,11 +201,7 @@ pub fn edit_specific_entry(
 
 //     Ok(())
 // }
-pub fn edit_all_entries(
-    journal_path: &PathBuf,
-    editor: String,
-    book: &Book,
-) -> Result<EffectMachine> {
+pub fn edit_all_entries(editor: String, book: &Book, repo_root: &str) -> Result<EffectMachine> {
     let mut effects = EffectMachine::default();
 
     effects.add(
@@ -192,14 +212,13 @@ pub fn edit_all_entries(
         true,
     );
 
+    effects.add(git::add(repo_root, &[repo_root.to_owned()]), false);
     effects.add(
-        EffectKind::GitHook(GitHookOpts {
-            start_path: journal_path.to_owned(),
-            files_to_add: vec![journal_path.to_owned()],
-            message: "feat(journal): edit bunch of entries".to_owned(),
-        }),
-        true,
+        git::commit(repo_root, "feat(journal): edit the few entries"),
+        false,
     );
+    effects.add(git::pull(repo_root), false);
+    effects.add(git::push(repo_root), false);
 
     Ok(effects)
 }
