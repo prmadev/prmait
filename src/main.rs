@@ -5,7 +5,7 @@ use prmait::effects::{EffectKind, EffectMachine};
 use prmait::input::{
     Args, Commands, Configs, JournalCommands, JournalEditCommands, TaskCommands, TaskListCommand,
 };
-use prmait::tasks::handlers::{mark_task_as, tasks_by_state, todays_task};
+use prmait::tasks::effectors::{mark_task_as, tasks_by_state, todays_task};
 use prmait::tasks::task::{State, Task};
 use prmait::tasks::tasklist::TaskList;
 use prmait::{git, journal, river, tasks, timeutils};
@@ -82,7 +82,7 @@ fn to_effect_machine(
                     people,
                 } => {
                     let repo_root =  git::repo_root(&config.journal_path()?)?.to_string_lossy().into_owned();
-                    journal::handlers::new_entry(
+                    journal::effectors::new_entry(
                         &journal::Entry {
                             at: now,
                             body: Arc::new(entry),
@@ -96,26 +96,26 @@ fn to_effect_machine(
                         &config.journal_file_formatting()?,
                     )?
                 }
-                JournalCommands::List => journal::handlers::list_entries(
+                JournalCommands::List => journal::effectors::list_entries(
                     &journal::Book::try_from(&config.journal_path()?)?,
                     &well_known::Rfc3339,
                 )?,
                 JournalCommands::Edit(edit_type) => {
                     let repo_root = git::repo_root(&config.journal_path()?)?.to_string_lossy().into_owned();
                     match edit_type {
-                        JournalEditCommands::Last => journal::handlers::edit_last_entry(
+                        JournalEditCommands::Last => journal::effectors::edit_last_entry(
                             &config.journal_path()?,
                             &journal::Book::try_from(&config.journal_path()?)?,
                             &repo_root,
                             editor(env::var_os("EDITOR"))?,
                         )?,
-                        JournalEditCommands::All => journal::handlers::edit_all_entries(
+                        JournalEditCommands::All => journal::effectors::edit_all_entries(
                             editor(env::var_os("EDITOR"))?,
                             &journal::Book::try_from(&config.journal_path()?)?,
                             &repo_root,
                         )?,
                         JournalEditCommands::Specific { item } => {
-                            journal::handlers::edit_specific_entry(
+                            journal::effectors::edit_specific_entry(
                                 &config.journal_path()?,
                                 &item,
                                 &journal::Book::try_from(&config.journal_path()?)?,
@@ -176,7 +176,7 @@ fn to_effect_machine(
                     .to_string_lossy()
                     .into_owned();
 
-                tasks::handlers::new_task(
+                tasks::effectors::new_task(
                     &config.task_path()?,
                     &t,
                     &repo_root,

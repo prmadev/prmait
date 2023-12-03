@@ -2,6 +2,6 @@ pub mod book;
 pub use book::*;
 pub mod entry;
 pub use entry::*;
-pub mod handlers;
+pub mod effectors;
 pub use error::*;
 pub mod error;
