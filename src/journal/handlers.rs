@@ -5,6 +5,7 @@ use crate::git;
 use crate::journal::entry::Entry;
 use crate::journal::{Book, Error};
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use time::formatting::Formattable;
 use time::OffsetDateTime;
@@ -42,10 +43,7 @@ pub fn new_entry(
         false,
     );
 
-    let fp = match file_path.to_string_lossy() {
-        std::borrow::Cow::Borrowed(s) => s.to_owned(),
-        std::borrow::Cow::Owned(s) => s,
-    };
+    let fp = file_path.to_string_lossy().into_owned();
 
     effects.add(git::add(repo_root, &[fp]), false);
     effects.add(
@@ -95,10 +93,7 @@ pub fn edit_last_entry(
         true,
     );
 
-    let fp = match ent_path.to_string_lossy() {
-        std::borrow::Cow::Borrowed(s) => s.to_owned(),
-        std::borrow::Cow::Owned(s) => s,
-    };
+    let fp = ent_path.to_string_lossy().into_owned();
 
     effects.add(git::add(repo_root, &[fp]), false);
     effects.add(
@@ -139,11 +134,9 @@ pub fn edit_specific_entry(
     );
 
     let fp: Vec<String> = ent_path
-        .into_iter()
-        .map(|x| match x.to_string_lossy() {
-            std::borrow::Cow::Borrowed(s) => s.to_owned(),
-            std::borrow::Cow::Owned(s) => s,
-        })
+        .iter()
+        .map(|x| Path::to_string_lossy(x))
+        .map(Cow::into_owned)
         .collect();
 
     effects.add(git::add(repo_root, &fp), false);

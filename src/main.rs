@@ -81,11 +81,7 @@ fn to_effect_machine(
                     mood,
                     people,
                 } => {
-                    let repo_root = match git::repo_root(&config.journal_path()?)?.to_string_lossy()
-                    {
-                        std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                        std::borrow::Cow::Owned(s) => s,
-                    };
+                    let repo_root =  git::repo_root(&config.journal_path()?)?.to_string_lossy().into_owned();
                     journal::handlers::new_entry(
                         &journal::Entry {
                             at: now,
@@ -105,11 +101,7 @@ fn to_effect_machine(
                     &well_known::Rfc3339,
                 )?,
                 JournalCommands::Edit(edit_type) => {
-                    let repo_root = match git::repo_root(&config.journal_path()?)?.to_string_lossy()
-                    {
-                        std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                        std::borrow::Cow::Owned(s) => s,
-                    };
+                    let repo_root = git::repo_root(&config.journal_path()?)?.to_string_lossy().into_owned();
                     match edit_type {
                         JournalEditCommands::Last => journal::handlers::edit_last_entry(
                             &config.journal_path()?,
@@ -180,10 +172,9 @@ fn to_effect_machine(
                     start,
                     end,
                 };
-                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
-                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                    std::borrow::Cow::Owned(s) => s,
-                };
+                let repo_root = git::repo_root(&config.task_path()?)?
+                    .to_string_lossy()
+                    .into_owned();
 
                 tasks::handlers::new_task(
                     &config.task_path()?,
@@ -230,26 +221,23 @@ fn to_effect_machine(
             }
             TaskCommands::Done { id } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
-                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                    std::borrow::Cow::Owned(s) => s,
-                };
+                let repo_root = git::repo_root(&config.task_path()?)?
+                    .to_string_lossy()
+                    .into_owned();
                 mark_task_as(task_dir, &task_list, &State::Done(now), &repo_root, &id)?
             }
             TaskCommands::Backlog { id } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
-                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                    std::borrow::Cow::Owned(s) => s,
-                };
+                let repo_root = git::repo_root(&config.task_path()?)?
+                    .to_string_lossy()
+                    .into_owned();
                 mark_task_as(task_dir, &task_list, &State::Backlog(now), &repo_root, &id)?
             }
             TaskCommands::Abandon { id, content } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
-                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                    std::borrow::Cow::Owned(s) => s,
-                };
+                let repo_root = git::repo_root(&config.task_path()?)?
+                    .to_string_lossy()
+                    .into_owned();
                 mark_task_as(
                     task_dir,
                     &task_list,
@@ -260,10 +248,9 @@ fn to_effect_machine(
             }
             TaskCommands::Todo { id } => {
                 let task_list = TaskList::try_from(task_dir)?;
-                let repo_root = match git::repo_root(&config.task_path()?)?.to_string_lossy() {
-                    std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                    std::borrow::Cow::Owned(s) => s,
-                };
+                let repo_root = git::repo_root(&config.task_path()?)?
+                    .to_string_lossy()
+                    .into_owned();
                 mark_task_as(task_dir, &task_list, &State::ToDo(now), &repo_root, &id)?
             }
         },

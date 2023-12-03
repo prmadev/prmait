@@ -44,10 +44,7 @@ pub fn new_task(
         }),
         false,
     );
-    let fp = match file_path.to_string_lossy() {
-        std::borrow::Cow::Borrowed(s) => s.to_owned(),
-        std::borrow::Cow::Owned(s) => s,
-    };
+    let fp = file_path.to_string_lossy().into_owned();
 
     effects.add(git::add(repo_root, &[fp]), false);
     effects.add(
@@ -105,10 +102,7 @@ pub fn mark_task_as(
                 false,
             );
 
-            let fp = match file_path.to_string_lossy() {
-                std::borrow::Cow::Borrowed(s) => s.to_owned(),
-                std::borrow::Cow::Owned(s) => s,
-            };
+            let fp = file_path.to_string_lossy().into_owned();
 
             effects.add(git::add(repo_root, &[fp]), false);
             effects.add(
