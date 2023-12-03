@@ -1,21 +1,19 @@
-use tokio::process::Command;
-use tracing::{info, trace};
+use crate::effects::{EffectKind, EffectMachine};
 
-#[tracing::instrument]
-pub async fn run(
+pub fn run(
     border_width: i8,
     colors: &Colors,
     hardware: &Hardware,
     startup_commands: &Vec<CommandSet>,
     apps: &Apps,
-) -> Result<(), Error> {
-    info!("starting");
+) -> Result<EffectMachine, Error> {
+    let mut efs = EffectMachine::default();
     let border_width_as_string = border_width.to_string();
     let player_pause = format!("{} play-pause", apps.player_ctl);
-
     let player_previous = format!("{} previous", apps.player_ctl);
     let player_next = format!("{} next", apps.player_ctl);
-    let handlers = [
+
+    let river_config_efm = [
         vec!["background-color", &colors.background],
         vec!["border-color-focused", &colors.border_focused],
         vec!["border-color-unfocused", &colors.border_unfocused],
@@ -259,67 +257,64 @@ pub async fn run(
         ],
     ]
     .into_iter()
-    .map(riverctl);
-    let start_up_handlers = startup_commands
+    .map(args_to_riverctl_command_borrowed)
+    .fold(EffectMachine::default(), |mut efm, e| {
+        efm.add(e, false);
+        efm
+    });
+    // tags()
+
+    let start_up_efm = startup_commands
         .iter()
         .cloned()
         .map(String::from)
-        .map(|x| CommandSet {
-            executible: String::from("riverctl"),
-            args: vec![String::from("spawn"), x],
-        })
-        .map(command_runner);
-    tags().await?;
-    trace!("defined the tags");
-    for handle in handlers {
-        handle.await?;
-    }
-    trace!("done with the general handlers");
-    for handle in start_up_handlers {
-        handle.await?;
-    }
-    trace!("done with the startup handlers");
-
-    Ok(())
-}
-#[tracing::instrument]
-async fn command_runner(cmd: CommandSet) -> Result<(), Error> {
-    trace!("started runnig a command");
-    Command::new(&cmd.executible)
-        .args(&cmd.args)
-        .spawn()
-        .map_err(Error::CouldNotSpawnTheTask)?
-        .wait_with_output()
-        .await
-        .map_err(Error::TaskReturnedError)?;
-    trace!("done running a command");
-    Ok(())
+        .map(|x| vec![String::from("spawn"), x])
+        .map(args_to_riverctl_command)
+        .fold(EffectMachine::default(), |mut efm, e| {
+            efm.add(e, false);
+            efm
+        });
+    efs.add(EffectKind::RunAsyncMachine(river_config_efm), false);
+    efs.add(EffectKind::RunAsyncMachine(tags()?), false);
+    efs.add(EffectKind::RunAsyncMachine(start_up_efm), true);
+    Ok(efs)
 }
 
-async fn riverctl(args: Vec<&str>) -> Result<(), Error> {
-    command_runner(CommandSet {
-        executible: "riverctl".to_owned(),
-        args: args.into_iter().map(ToOwned::to_owned).collect(),
-    })
-    .await?;
-    Ok(())
+fn args_to_riverctl_command_borrowed(args: Vec<&str>) -> EffectKind {
+    EffectKind::RunExternalCommand(
+        "riverctl".to_owned(),
+        args.into_iter().map(str::to_string).collect(),
+        Default::default(),
+    )
+}
+fn args_to_riverctl_command(args: Vec<String>) -> EffectKind {
+    EffectKind::RunExternalCommand("riverctl".to_owned(), args, Default::default())
 }
 
-#[tracing::instrument]
-async fn tags() -> Result<(), Error> {
+fn tags() -> Result<EffectMachine, Error> {
     static SET_FOCUS: &str = "set-focused-tags";
     static TOGGLE_FOCUS: &str = "toggle-focused-tags";
     static TOGGLE_VIEW: &str = "toggle-view-tags";
     static SET_VIEW: &str = "set-view-tags";
 
+    let mut river_args: Vec<Vec<String>> = vec![];
     for i in 1_i32..=9_i32 {
         let numb = format!("{i}");
         let tag = format!("{}", 1_i32 << (i - 1_i32));
 
-        let que: Vec<Vec<&str>> = vec![
-            vec!["map", "normal", "Super", &numb, SET_FOCUS, &tag],
-            vec!["map", "normal", "Super+Shift", &numb, SET_VIEW, &tag],
-            vec!["map", "normal", "Super+Control", &numb, TOGGLE_FOCUS, &tag],
+        let mut que: Vec<Vec<String>> = vec![
+            vec!["map", "normal", "Super", &numb, SET_FOCUS, &tag]
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect(),
+            vec!["map", "normal", "Super+Shift", &numb, SET_VIEW, &tag]
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect(),
+            vec!["map", "normal", "Super+Control", &numb, TOGGLE_FOCUS, &tag]
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect(),
             vec![
                 "map",
                 "normal",
@@ -327,30 +322,35 @@ async fn tags() -> Result<(), Error> {
                 &numb,
                 TOGGLE_VIEW,
                 &tag,
-            ],
+            ]
+            .into_iter()
+            .map(|s| s.to_owned())
+            .collect(),
         ];
-
-        let mut handles = vec![];
-        for command in &que {
-            handles.push(riverctl(command.clone()));
-        }
-        for handle in handles {
-            handle.await?;
-        }
+        river_args.append(&mut que);
     }
 
     let all_tags = format!("{}", (1u64 << 32_i32) - 1_u64);
-    riverctl(vec!["map", "normal", "Super", "0", SET_FOCUS, &all_tags]).await?;
-    riverctl(vec![
-        "map",
-        "normal",
-        "Super+Shift",
-        "0",
-        SET_VIEW,
-        &all_tags,
-    ])
-    .await?;
-    Ok(())
+    river_args.push(
+        vec!["map", "normal", "Super", "0", SET_FOCUS, &all_tags]
+            .into_iter()
+            .map(|s| s.to_owned())
+            .collect(),
+    );
+    river_args.push(
+        vec!["map", "normal", "Super+Shift", "0", SET_VIEW, &all_tags]
+            .into_iter()
+            .map(|s| s.to_owned())
+            .collect(),
+    );
+    let efm = river_args.into_iter().map(args_to_riverctl_command).fold(
+        EffectMachine::default(),
+        |mut efm, e| {
+            efm.add(e, false);
+            efm
+        },
+    );
+    Ok(efm)
 }
 
 #[derive(Debug, thiserror::Error)]

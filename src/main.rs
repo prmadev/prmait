@@ -16,8 +16,7 @@ use time::OffsetDateTime;
 
 const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     // error message management
     color_eyre::install()?;
 
@@ -215,15 +214,14 @@ async fn main() -> Result<()> {
             let river_config = &config
                 .river
                 .ok_or(Report::msg("river settings not found"))?;
-            river::run(
+            let ef = river::run(
                 river_config.border_width,
                 &river_config.colors,
                 &river_config.hardware,
                 &river_config.startups,
                 &river_config.apps,
-            )
-            .await?;
-            EffectMachine::default()
+            )?;
+            ef
         }
         Commands::Tasks => {
             let task_dir = config.task_path()?;
