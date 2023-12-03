@@ -59,6 +59,7 @@ pub fn list_entries(
     time_format_descriptor: &(impl Formattable + ?Sized),
 ) -> Result<EffectMachine> {
     let mut efs = EffectMachine::default();
+
     efs.add(
         EffectKind::PrintToStdOut(book.table_list(time_format_descriptor)?.clone()),
         false,

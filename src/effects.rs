@@ -1,11 +1,11 @@
 use std::{ffi::OsString, path::PathBuf, process::Command};
 
+use clap_complete_command::Shell;
 use tracing::{debug, error, info, trace};
 
 use crate::git;
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug)]
 pub enum EffectKind {
     WriteToFile(FileWriterOpts),
     CreateDir(CreateDirOpts),
@@ -13,6 +13,8 @@ pub enum EffectKind {
     OpenInEditor(OpenInEditorOpts),
     PrintToStdOut(String),
     PrintToStdErr(String),
+    GenerateShellCompletion(Shell, clap::Command),
+    RunAsyncMachine(EffectMachine),
 }
 
 impl EffectKind {
@@ -24,17 +26,28 @@ impl EffectKind {
             Self::OpenInEditor(opts) => editor_opener(opts),
             Self::PrintToStdOut(text) => Ok(println!("{text}")), // I know :D!
             Self::PrintToStdErr(text) => Ok(eprintln!("{text}")), // I know :D!
+            Self::GenerateShellCompletion(shell, cmd) => {
+                let mut c = cmd.clone();
+                shell.generate(&mut c, &mut std::io::stdout());
+                Ok(())
+            }
+            Self::RunAsyncMachine(e) => tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .map_err(Error::AsyncRuntimeCouldNotBeBuilt)?
+                .block_on(async { e.async_run().await }),
         }
     }
 }
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug)]
 pub struct Effect {
     pub effect_kind: EffectKind,
     pub forgiving: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct EffectMachine(Vec<Effect>);
+
 impl EffectMachine {
     pub fn run(self) -> Result<()> {
         for ef in self.0 {
@@ -49,6 +62,31 @@ impl EffectMachine {
             }
             trace!("done with the effect");
         }
+        trace!("done with all the effects");
+        Ok(())
+    }
+    pub async fn async_run(self) -> Result<()> {
+        let mut handlers = vec![];
+        for ef in self.0 {
+            handlers.push(async move {
+                if let Err(error) = ef.effect_kind.apply() {
+                    error!("something went wrong during applying that effect");
+
+                    if !ef.forgiving {
+                        error!(" effect is not forgiving, not continuing");
+                        return Err(error);
+                    }
+                    info!(" effect is forgiving, continuing");
+                }
+                trace!("done with the effect");
+                Ok(())
+            })
+        }
+
+        for handler in handlers.into_iter() {
+            handler.await?
+        }
+
         trace!("done with all the effects");
         Ok(())
     }
@@ -90,6 +128,8 @@ pub enum Error {
     GitError(git::Error),
     #[error("editor returned error: {0}")]
     EditorError(std::io::Error),
+    #[error("could not build async runtime: {0}")]
+    AsyncRuntimeCouldNotBeBuilt(tokio::io::Error),
 }
 
 type Result<T> = std::result::Result<T, Error>;

@@ -1,6 +1,7 @@
 use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
 use color_eyre::Report;
+use prmait::effects::{EffectKind, EffectMachine};
 use prmait::input::{
     Args, Commands, Configs, JournalCommands, JournalEditCommands, TaskCommands, TaskListCommand,
 };
@@ -51,7 +52,7 @@ async fn main() -> Result<()> {
         return Ok(());
     };
 
-    match general_command {
+    let efs = match general_command {
         Commands::J { journal_command } | Commands::Journal { journal_command } => {
             match journal_command {
                 JournalCommands::New {
@@ -59,54 +60,40 @@ async fn main() -> Result<()> {
                     tag,
                     mood,
                     people,
-                } => {
-                    let efs = journal::handlers::new_entry(
-                        &journal::Entry {
-                            at: now,
-                            body: Arc::new(entry),
-                            tag,
-                            mood,
-                            people,
-                        },
-                        &config.journal_path()?,
-                        now,
-                        &config.journal_file_formatting()?,
-                    )?;
-
-                    efs.run()?;
-                }
-                JournalCommands::List => {
-                    let efs = journal::handlers::list_entries(
-                        &journal::Book::try_from(&config.journal_path()?)?,
-                        &well_known::Rfc3339,
-                    )?;
-                    efs.run()?;
-                }
+                } => journal::handlers::new_entry(
+                    &journal::Entry {
+                        at: now,
+                        body: Arc::new(entry),
+                        tag,
+                        mood,
+                        people,
+                    },
+                    &config.journal_path()?,
+                    now,
+                    &config.journal_file_formatting()?,
+                )?,
+                JournalCommands::List => journal::handlers::list_entries(
+                    &journal::Book::try_from(&config.journal_path()?)?,
+                    &well_known::Rfc3339,
+                )?,
                 JournalCommands::Edit(edit_type) => match edit_type {
-                    JournalEditCommands::Last => {
-                        let efs = journal::handlers::edit_last_entry(
-                            &config.journal_path()?,
-                            &journal::Book::try_from(&config.journal_path()?)?,
-                            editor(env::var_os("EDITOR"))?,
-                        )?;
-                        efs.run()?;
-                    }
-                    JournalEditCommands::All => {
-                        let efs = journal::handlers::edit_all_entries(
-                            &config.journal_path()?,
-                            editor(env::var_os("EDITOR"))?,
-                            &journal::Book::try_from(&config.journal_path()?)?,
-                        )?;
-                        efs.run()?;
-                    }
+                    JournalEditCommands::Last => journal::handlers::edit_last_entry(
+                        &config.journal_path()?,
+                        &journal::Book::try_from(&config.journal_path()?)?,
+                        editor(env::var_os("EDITOR"))?,
+                    )?,
+                    JournalEditCommands::All => journal::handlers::edit_all_entries(
+                        &config.journal_path()?,
+                        editor(env::var_os("EDITOR"))?,
+                        &journal::Book::try_from(&config.journal_path()?)?,
+                    )?,
                     JournalEditCommands::Specific { item } => {
-                        let efs = journal::handlers::edit_specific_entry(
+                        journal::handlers::edit_specific_entry(
                             &config.journal_path()?,
                             &item,
                             &journal::Book::try_from(&config.journal_path()?)?,
                             editor(env::var_os("EDITOR"))?,
-                        )?;
-                        efs.run()?;
+                        )?
                     }
                 },
                 // JournalCommands::Delete => journal::handlers::delete_interactive(
@@ -157,87 +144,72 @@ async fn main() -> Result<()> {
                     end,
                 };
 
-                let efs = tasks::handlers::new_task(
+                tasks::handlers::new_task(
                     &config.task_path()?,
                     &t,
                     &config.task_file_formatting()?,
-                )?;
-                efs.run()?;
+                )?
             }
             TaskCommands::List(task_list_command) => {
                 let tasklist = TaskList::try_from(&task_dir)?;
                 match task_list_command {
                     TaskListCommand::Today => {
-                        let efs =
-                            todays_task(tasklist, now.date(), &project, now, &well_known::Rfc3339)?;
-                        efs.run()?;
+                        todays_task(tasklist, now.date(), &project, now, &well_known::Rfc3339)?
                     }
-                    TaskListCommand::Todo => {
-                        let efs = tasks_by_state(
-                            tasklist,
-                            |x| matches!(x, &State::ToDo(_)),
-                            &project,
-                            now,
-                            &well_known::Rfc3339,
-                        )?;
-                        efs.run()?;
-                    }
-                    TaskListCommand::Done => {
-                        let efs = tasks_by_state(
-                            tasklist,
-                            |x| matches!(x, &State::Done(_)),
-                            &project,
-                            now,
-                            &well_known::Rfc3339,
-                        )?;
-                        efs.run()?;
-                    }
-                    TaskListCommand::Abandoned => {
-                        let efs = tasks_by_state(
-                            tasklist,
-                            |x| matches!(x, State::Abandoned(_, _)),
-                            &project,
-                            now,
-                            &well_known::Rfc3339,
-                        )?;
-                        efs.run()?;
-                    }
-                    TaskListCommand::Backlogged => {
-                        let efs = tasks_by_state(
-                            tasklist,
-                            |x| matches!(x, State::Backlog(_)),
-                            &project,
-                            now,
-                            &well_known::Rfc3339,
-                        )?;
-                        efs.run()?;
-                    }
+                    TaskListCommand::Todo => tasks_by_state(
+                        tasklist,
+                        |x| matches!(x, &State::ToDo(_)),
+                        &project,
+                        now,
+                        &well_known::Rfc3339,
+                    )?,
+                    TaskListCommand::Done => tasks_by_state(
+                        tasklist,
+                        |x| matches!(x, &State::Done(_)),
+                        &project,
+                        now,
+                        &well_known::Rfc3339,
+                    )?,
+                    TaskListCommand::Abandoned => tasks_by_state(
+                        tasklist,
+                        |x| matches!(x, State::Abandoned(_, _)),
+                        &project,
+                        now,
+                        &well_known::Rfc3339,
+                    )?,
+                    TaskListCommand::Backlogged => tasks_by_state(
+                        tasklist,
+                        |x| matches!(x, State::Backlog(_)),
+                        &project,
+                        now,
+                        &well_known::Rfc3339,
+                    )?,
                 }
             }
             TaskCommands::Done { id } => {
                 let task_list = TaskList::try_from(&task_dir)?;
-                let effects = mark_task_as(&task_dir, &task_list, &State::Done(now), &id)?;
-                effects.run()?;
+                mark_task_as(&task_dir, &task_list, &State::Done(now), &id)?
             }
             TaskCommands::Backlog { id } => {
                 let task_list = TaskList::try_from(&task_dir)?;
-                let effects = mark_task_as(&task_dir, &task_list, &State::Backlog(now), &id)?;
-                effects.run()?;
+                mark_task_as(&task_dir, &task_list, &State::Backlog(now), &id)?
             }
             TaskCommands::Abandon { id, content } => {
                 let task_list = TaskList::try_from(&task_dir)?;
-                let effects =
-                    mark_task_as(&task_dir, &task_list, &State::Abandoned(now, content), &id)?;
-                effects.run()?;
+                mark_task_as(&task_dir, &task_list, &State::Abandoned(now, content), &id)?
             }
             TaskCommands::Todo { id } => {
                 let task_list = TaskList::try_from(&task_dir)?;
-                let effects = mark_task_as(&task_dir, &task_list, &State::ToDo(now), &id)?;
-                effects.run()?;
+                mark_task_as(&task_dir, &task_list, &State::ToDo(now), &id)?
             }
         },
         Commands::Completions { shell } => {
-            shell.generate(&mut Args::command(), &mut std::io::stdout());
+            let mut ef = EffectMachine::default();
+            ef.add(
+                EffectKind::GenerateShellCompletion(shell, Args::command()),
+                false,
+            );
+            ef
         }
         Commands::River => {
             let river_config = &config
@@ -251,6 +223,7 @@ async fn main() -> Result<()> {
                 &river_config.apps,
             )
             .await?;
+            EffectMachine::default()
         }
         Commands::Tasks => {
             let task_dir = config.task_path()?;
@@ -265,9 +238,10 @@ async fn main() -> Result<()> {
                 &project,
                 now,
                 &well_known::Rfc3339,
-            )?;
+            )?
         }
-    }
+    };
+    efs.run()?;
 
     Ok(())
 }
