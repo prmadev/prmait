@@ -214,14 +214,14 @@ fn main() -> Result<()> {
             let river_config = &config
                 .river
                 .ok_or(Report::msg("river settings not found"))?;
-            let ef = river::run(
+            
+            river::run(
                 river_config.border_width,
                 &river_config.colors,
                 &river_config.hardware,
                 &river_config.startups,
                 &river_config.apps,
-            )?;
-            ef
+            )?
         }
         Commands::Tasks => {
             let task_dir = config.task_path()?;

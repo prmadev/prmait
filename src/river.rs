@@ -4,7 +4,7 @@ pub fn run(
     border_width: i8,
     colors: &Colors,
     hardware: &Hardware,
-    startup_commands: &Vec<CommandSet>,
+    startup_commands: &[CommandSet],
     apps: &Apps,
 ) -> Result<EffectMachine, Error> {
     let mut efs = EffectMachine::default();
