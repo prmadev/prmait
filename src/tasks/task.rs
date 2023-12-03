@@ -117,6 +117,7 @@ impl TryFrom<&PathBuf> for Task {
         Ok(task)
     }
 }
+
 impl TryFrom<PathBuf> for Task {
     type Error = Error;
 

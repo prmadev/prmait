@@ -51,7 +51,28 @@ fn main() -> Result<()> {
         return Ok(());
     };
 
-    let efs = match general_command {
+    let efs = to_effect_machine(
+        general_command,
+        now,
+        config,
+        time_offset,
+        project,
+        &task_dir,
+    )?;
+    efs.run()?;
+
+    Ok(())
+}
+
+fn to_effect_machine(
+    general_command: Commands,
+    now: OffsetDateTime,
+    config: Configs,
+    time_offset: time::UtcOffset,
+    project: Option<String>,
+    task_dir: &PathBuf,
+) -> Result<EffectMachine, Report> {
+    Ok(match general_command {
         Commands::J { journal_command } | Commands::Journal { journal_command } => {
             match journal_command {
                 JournalCommands::New {
@@ -150,7 +171,7 @@ fn main() -> Result<()> {
                 )?
             }
             TaskCommands::List(task_list_command) => {
-                let tasklist = TaskList::try_from(&task_dir)?;
+                let tasklist = TaskList::try_from(task_dir)?;
                 match task_list_command {
                     TaskListCommand::Today => {
                         todays_task(tasklist, now.date(), &project, now, &well_known::Rfc3339)?
@@ -186,20 +207,20 @@ fn main() -> Result<()> {
                 }
             }
             TaskCommands::Done { id } => {
-                let task_list = TaskList::try_from(&task_dir)?;
-                mark_task_as(&task_dir, &task_list, &State::Done(now), &id)?
+                let task_list = TaskList::try_from(task_dir)?;
+                mark_task_as(task_dir, &task_list, &State::Done(now), &id)?
             }
             TaskCommands::Backlog { id } => {
-                let task_list = TaskList::try_from(&task_dir)?;
-                mark_task_as(&task_dir, &task_list, &State::Backlog(now), &id)?
+                let task_list = TaskList::try_from(task_dir)?;
+                mark_task_as(task_dir, &task_list, &State::Backlog(now), &id)?
             }
             TaskCommands::Abandon { id, content } => {
-                let task_list = TaskList::try_from(&task_dir)?;
-                mark_task_as(&task_dir, &task_list, &State::Abandoned(now, content), &id)?
+                let task_list = TaskList::try_from(task_dir)?;
+                mark_task_as(task_dir, &task_list, &State::Abandoned(now, content), &id)?
             }
             TaskCommands::Todo { id } => {
-                let task_list = TaskList::try_from(&task_dir)?;
-                mark_task_as(&task_dir, &task_list, &State::ToDo(now), &id)?
+                let task_list = TaskList::try_from(task_dir)?;
+                mark_task_as(task_dir, &task_list, &State::ToDo(now), &id)?
             }
         },
         Commands::Completions { shell } => {
@@ -214,7 +235,7 @@ fn main() -> Result<()> {
             let river_config = &config
                 .river
                 .ok_or(Report::msg("river settings not found"))?;
-            
+
             river::run(
                 river_config.border_width,
                 &river_config.colors,
@@ -238,10 +259,7 @@ fn main() -> Result<()> {
                 &well_known::Rfc3339,
             )?
         }
-    };
-    efs.run()?;
-
-    Ok(())
+    })
 }
 
 fn editor(extractor: Option<OsString>) -> Result<String> {

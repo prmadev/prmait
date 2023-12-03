@@ -91,11 +91,11 @@ impl EffectMachine {
                 }
                 trace!("done with the effect");
                 Ok(())
-            })
+            });
         }
 
-        for handler in handlers.into_iter() {
-            handler.await?
+        for handler in handlers {
+            handler.await?;
         }
 
         trace!("done with all the effects");

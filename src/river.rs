@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::effects::{EffectKind, EffectMachine};
 
 pub fn run(
@@ -8,12 +10,36 @@ pub fn run(
     apps: &Apps,
 ) -> Result<EffectMachine, Error> {
     let mut efs = EffectMachine::default();
+    let river_config_efm = river_config(border_width, apps, colors, hardware);
+
+    let start_up_efm = startup_commands
+        .iter()
+        .cloned()
+        .map(String::from)
+        .map(|x| vec![String::from("spawn"), x])
+        .map(args_to_riverctl_command)
+        .fold(EffectMachine::default(), |mut efm, e| {
+            efm.add(e, false);
+            efm
+        });
+    efs.add(EffectKind::RunAsyncMachine(river_config_efm), false);
+    efs.add(EffectKind::RunAsyncMachine(tags()), false);
+    efs.add(EffectKind::RunAsyncMachine(start_up_efm), true);
+    Ok(efs)
+}
+
+fn river_config(
+    border_width: i8,
+    apps: &Apps,
+    colors: &Colors,
+    hardware: &Hardware,
+) -> EffectMachine {
     let border_width_as_string = border_width.to_string();
     let player_pause = format!("{} play-pause", apps.player_ctl);
     let player_previous = format!("{} previous", apps.player_ctl);
     let player_next = format!("{} next", apps.player_ctl);
 
-    let river_config_efm = [
+    [
         vec!["background-color", &colors.background],
         vec!["border-color-focused", &colors.border_focused],
         vec!["border-color-unfocused", &colors.border_unfocused],
@@ -261,37 +287,21 @@ pub fn run(
     .fold(EffectMachine::default(), |mut efm, e| {
         efm.add(e, false);
         efm
-    });
-    // tags()
-
-    let start_up_efm = startup_commands
-        .iter()
-        .cloned()
-        .map(String::from)
-        .map(|x| vec![String::from("spawn"), x])
-        .map(args_to_riverctl_command)
-        .fold(EffectMachine::default(), |mut efm, e| {
-            efm.add(e, false);
-            efm
-        });
-    efs.add(EffectKind::RunAsyncMachine(river_config_efm), false);
-    efs.add(EffectKind::RunAsyncMachine(tags()?), false);
-    efs.add(EffectKind::RunAsyncMachine(start_up_efm), true);
-    Ok(efs)
+    })
 }
 
 fn args_to_riverctl_command_borrowed(args: Vec<&str>) -> EffectKind {
     EffectKind::RunExternalCommand(
         "riverctl".to_owned(),
         args.into_iter().map(str::to_string).collect(),
-        Default::default(),
+        HashMap::default(),
     )
 }
 fn args_to_riverctl_command(args: Vec<String>) -> EffectKind {
-    EffectKind::RunExternalCommand("riverctl".to_owned(), args, Default::default())
+    EffectKind::RunExternalCommand("riverctl".to_owned(), args, HashMap::default())
 }
 
-fn tags() -> Result<EffectMachine, Error> {
+fn tags() -> EffectMachine {
     static SET_FOCUS: &str = "set-focused-tags";
     static TOGGLE_FOCUS: &str = "toggle-focused-tags";
     static TOGGLE_VIEW: &str = "toggle-view-tags";
@@ -305,15 +315,15 @@ fn tags() -> Result<EffectMachine, Error> {
         let mut que: Vec<Vec<String>> = vec![
             vec!["map", "normal", "Super", &numb, SET_FOCUS, &tag]
                 .into_iter()
-                .map(|s| s.to_owned())
+                .map(std::borrow::ToOwned::to_owned)
                 .collect(),
             vec!["map", "normal", "Super+Shift", &numb, SET_VIEW, &tag]
                 .into_iter()
-                .map(|s| s.to_owned())
+                .map(std::borrow::ToOwned::to_owned)
                 .collect(),
             vec!["map", "normal", "Super+Control", &numb, TOGGLE_FOCUS, &tag]
                 .into_iter()
-                .map(|s| s.to_owned())
+                .map(std::borrow::ToOwned::to_owned)
                 .collect(),
             vec![
                 "map",
@@ -324,7 +334,7 @@ fn tags() -> Result<EffectMachine, Error> {
                 &tag,
             ]
             .into_iter()
-            .map(|s| s.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect(),
         ];
         river_args.append(&mut que);
@@ -334,23 +344,22 @@ fn tags() -> Result<EffectMachine, Error> {
     river_args.push(
         vec!["map", "normal", "Super", "0", SET_FOCUS, &all_tags]
             .into_iter()
-            .map(|s| s.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect(),
     );
     river_args.push(
         vec!["map", "normal", "Super+Shift", "0", SET_VIEW, &all_tags]
             .into_iter()
-            .map(|s| s.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect(),
     );
-    let efm = river_args.into_iter().map(args_to_riverctl_command).fold(
+    river_args.into_iter().map(args_to_riverctl_command).fold(
         EffectMachine::default(),
         |mut efm, e| {
             efm.add(e, false);
             efm
         },
-    );
-    Ok(efm)
+    )
 }
 
 #[derive(Debug, thiserror::Error)]
