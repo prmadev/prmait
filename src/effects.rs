@@ -25,9 +25,8 @@ impl EffectKind {
             Self::OpenInEditor(opts) => editor_opener(opts),
             Self::PrintToStdOut(text) => Ok(println!("{text}")), // I know :D!
             Self::PrintToStdErr(text) => Ok(eprintln!("{text}")), // I know :D!
-            Self::GenerateShellCompletion(shell, cmd) => {
-                let mut c = cmd.clone();
-                shell.generate(&mut c, &mut std::io::stdout());
+            Self::GenerateShellCompletion(shell, mut cmd) => {
+                shell.generate(&mut cmd, &mut std::io::stdout());
                 Ok(())
             }
             Self::RunExternalCommand(cmd, args, envs) => {

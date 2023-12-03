@@ -111,6 +111,7 @@ pub enum TaskCommands {
     /// Set the task as abandoned
     Abandon {
         id: Vec<i64>,
+        #[arg(last = true)]
         content: Option<String>,
     },
     /// Set the task as todo
