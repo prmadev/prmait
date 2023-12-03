@@ -139,23 +139,6 @@ impl ToFileName for Task {
         Ok(self.time_created.format(time_format_descriptor)?)
     }
 }
-// impl Default for Task {
-//     fn default() -> Self {
-//         let now = Local::now();
-//         Self {
-//             id: now.timestamp(),
-//             state_log: vec![TaskState::default()],
-//             title: "".to_owned(),
-//             description: None,
-//             area: None,
-//             people: vec![],
-//             projects: vec![],
-//             time_created: now,
-//             start_to_end: TimeRange::build(None, None).unwrap(), // It should never return errors
-//                                                                  // with these values.
-//         }
-//     }
-// }
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum State {
@@ -168,11 +151,6 @@ pub enum State {
     ToDo(#[serde(with = "time::serde::rfc3339")] OffsetDateTime),
 }
 
-// impl Default for TaskState {
-//     fn default() -> Self {
-//         Self::ToDo(Local::now())
-//     }
-// }
 impl Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -213,8 +191,6 @@ impl Display for Area {
 impl FromStr for Area {
     type Err = AreaParsingError;
 
-    //noinspection SpellCheckingInspection
-    //noinspection SpellCheckingInspection
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "work" | "w" | "wo" | "wor" => Ok(Self::Work),
