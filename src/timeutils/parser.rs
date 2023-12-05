@@ -201,68 +201,48 @@ mod testing {
 
     use super::*;
     use crate::timeutils::{today, tomorrow};
+    use rstest::*;
     use time::{Month, UtcOffset};
 
     const fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
-    fn from_date_test() {
-        let expected = time::Date::from_calendar_date(1993, Month::April, 10).unwrap();
-        assert_eq!(parse_date("1993_04_10", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("1993_04.10", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("1993.4_10", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("1993_apr_10", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(
-            parse_date("1993_ApRil_10", UtcOffset::UTC).unwrap(),
-            expected
-        );
-        assert_eq!(parse_date("1993-04-10", UtcOffset::UTC).unwrap(), expected);
-    }
-    #[test]
     const fn normal_types() {
         is_normal::<Error>();
     }
-    #[test]
-    fn parse_from_today() {
-        let expected = today(UtcOffset::UTC);
-        assert_eq!(parse_date("today", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("tod", UtcOffset::UTC).unwrap(), expected);
-    }
 
-    #[test]
-    fn parse_from_tomorrow() {
-        let expected = tomorrow(UtcOffset::UTC);
-        assert_eq!(parse_date("tomorrow", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("tom", UtcOffset::UTC).unwrap(), expected);
-    }
-
-    #[test]
-    fn parse_from3days() {
-        let expected = day_from_today(UtcOffset::UTC, 3);
-        assert_eq!(parse_date("3days", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("3day", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("3d", UtcOffset::UTC).unwrap(), expected);
-    }
-
-    #[test]
-    fn parse_from_week() {
-        let expected = day_from_today(UtcOffset::UTC, 7);
-
-        assert_eq!(parse_date("1week", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("1w", UtcOffset::UTC).unwrap(), expected);
-    }
-    #[test]
-    fn parse_from_nweek() {
-        let expected = day_from_today(UtcOffset::UTC, 3 * 7);
-
-        assert_eq!(parse_date("3week", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("3w", UtcOffset::UTC).unwrap(), expected);
-    }
-    #[test]
-    fn parse_from_nmonth() {
-        let expected = day_from_today(UtcOffset::UTC, 30);
-
-        assert_eq!(parse_date("1month", UtcOffset::UTC).unwrap(), expected);
-        assert_eq!(parse_date("1m", UtcOffset::UTC).unwrap(), expected);
+    #[rstest]
+    #[case::parse_underlined_with_zero("1993_04_10" ,time::Date::from_calendar_date(1993, Month::April, 10).unwrap())]
+    #[case::parse_underlined_and_dotted("1993_04.10" ,time::Date::from_calendar_date(1993, Month::April, 10).unwrap())]
+    #[case::parse_dotted_and_underlined_without_zero("1993.4_10" ,time::Date::from_calendar_date(1993, Month::April, 10).unwrap())]
+    #[case::parse_apr_underlined_dotted("1993_apr.10" ,time::Date::from_calendar_date(1993, Month::April, 10).unwrap())]
+    #[case::parse_time_dash("1993-04-10" ,time::Date::from_calendar_date(1993, Month::April, 10).unwrap())]
+    #[case::parse_april_with_random_capital("1993-apRIl-10" ,time::Date::from_calendar_date(1993, Month::April, 10).unwrap())]
+    #[case::parse_tod("tod", today(UtcOffset::UTC))]
+    #[case::parse_today("today", today(UtcOffset::UTC))]
+    #[case::parse_tom("tom", tomorrow(UtcOffset::UTC))]
+    #[case::parse_tomorrow("tomorrow", tomorrow(UtcOffset::UTC))]
+    #[case::parse_3days("3days", day_from_today(UtcOffset::UTC, 3))]
+    #[case::parse_3days("3day", day_from_today(UtcOffset::UTC, 3))]
+    #[case::parse_3days("3d", day_from_today(UtcOffset::UTC, 3))]
+    #[case::parse_1weeks("1weeks", day_from_today(UtcOffset::UTC, 7))]
+    #[case::parse_1week("1week", day_from_today(UtcOffset::UTC, 7))]
+    #[case::parse_1w("1w", day_from_today(UtcOffset::UTC, 7))]
+    #[case::parse_3weeks("3weeks", day_from_today(UtcOffset::UTC, 3 * 7))]
+    #[case::parse_1week("3week", day_from_today(UtcOffset::UTC, 3 * 7))]
+    #[case::parse_1w("3w", day_from_today(UtcOffset::UTC, 3 * 7))]
+    #[case::parse_1m("1m", day_from_today(UtcOffset::UTC, 30))]
+    #[case::parse_1month("1month", day_from_today(UtcOffset::UTC, 30))]
+    #[case::parse_1months("1months", day_from_today(UtcOffset::UTC, 30))]
+    #[case::parse_22months("22months", day_from_today(UtcOffset::UTC, 22*30))]
+    #[case::parse_22months("22m", day_from_today(UtcOffset::UTC, 22*30))]
+    #[case::parse_1years("1years", day_from_today(UtcOffset::UTC, 365))]
+    #[case::parse_1year("1year", day_from_today(UtcOffset::UTC, 365))]
+    #[case::parse_1y("1y", day_from_today(UtcOffset::UTC, 365))]
+    #[case::parse_10y("10y", day_from_today(UtcOffset::UTC, 10*365))]
+    #[case::parse_10year("10year", day_from_today(UtcOffset::UTC, 10*365))]
+    #[case::parse_10years("10years", day_from_today(UtcOffset::UTC, 10*365))]
+    fn parse_date_happy_path(#[case] input: &str, #[case] expected: Date) {
+        assert_eq!(parse_date(input, UtcOffset::UTC).unwrap(), expected)
     }
 }
