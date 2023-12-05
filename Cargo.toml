@@ -74,10 +74,3 @@ map_clone = "warn"
 module_name_repetitions = "warn"
 needless_pass_by_value = "warn"
 
-[dev-dependencies]
-criterion = "0.5.1"
-rstest = "0.18.2"
-
-[[bench]]
-name = "my_benchmark"
-harness = false
