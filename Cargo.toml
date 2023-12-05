@@ -74,3 +74,7 @@ map_clone = "warn"
 module_name_repetitions = "warn"
 needless_pass_by_value = "warn"
 
+[dev-dependencies]
+assert2 = "0.3.11"
+rstest = "0.18.2"
+

@@ -2,7 +2,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case},
     character::complete::char,
-    combinator::map,
+    combinator::{all_consuming, map},
     error::{context, ContextError, ParseError},
     sequence::{terminated, tuple},
     Parser,
@@ -58,35 +58,35 @@ where
 {
     alt((
         map(
-            terminated(
+            all_consuming(terminated(
                 nom::character::complete::u16,
                 alt((tag_no_case("days"), tag_no_case("day"), tag_no_case("d"))),
-            ),
+            )),
             |count| ParserAction::TimeFromNow(TimeUnit::Day(count)),
         ),
         map(
-            terminated(
+            all_consuming(terminated(
                 nom::character::complete::u16,
                 alt((tag_no_case("weeks"), tag_no_case("week"), tag_no_case("w"))),
-            ),
+            )),
             |count| ParserAction::TimeFromNow(TimeUnit::Week(count)),
         ),
         map(
-            terminated(
+            all_consuming(terminated(
                 nom::character::complete::u16,
                 alt((
                     tag_no_case("months"),
                     tag_no_case("month"),
                     tag_no_case("m"),
                 )),
-            ),
+            )),
             |count| ParserAction::TimeFromNow(TimeUnit::Month(count)),
         ),
         map(
-            terminated(
+            all_consuming(terminated(
                 nom::character::complete::u16,
                 alt((tag_no_case("years"), tag_no_case("year"), tag_no_case("y"))),
-            ),
+            )),
             |count| ParserAction::TimeFromNow(TimeUnit::Year(count)),
         ),
     ))
@@ -98,7 +98,7 @@ where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
     map(
-        tuple((
+        all_consuming(tuple((
             context("year_parsing", nom::character::complete::i32),
             context(
                 "month_parsing",
@@ -109,7 +109,7 @@ where
                 ),
             ),
             context("day_parsing", nom::character::complete::u8),
-        )),
+        ))),
         |(y, m, d)| ParserAction::SpecificDate(y, m, d),
     )
     .parse(content)
@@ -244,5 +244,21 @@ mod testing {
     #[case::parse_10years("10years", day_from_today(UtcOffset::UTC, 10*365))]
     fn parse_date_happy_path(#[case] input: &str, #[case] expected: Date) {
         assert_eq!(parse_date(input, UtcOffset::UTC).unwrap(), expected)
+    }
+
+    #[rstest]
+    #[should_panic]
+    #[case::parse_10yers("10yers", day_from_today(UtcOffset::UTC, 10*365))]
+    #[should_panic]
+    #[case::parse_10yes("10yes", day_from_today(UtcOffset::UTC, 10*365))]
+    #[should_panic]
+    #[case::parse_10ye("10ye", day_from_today(UtcOffset::UTC, 10*365))]
+    #[should_panic]
+    #[case::parse_1ya("1ya", day_from_today(UtcOffset::UTC, 365))]
+    #[should_panic]
+    #[case::parse_1da("1da", day_from_today(UtcOffset::UTC, 1))]
+    fn parse_date_unhappy_path(#[case] input: &str, #[case] expected: Date) {
+        dbg!(input, parse_date(input, UtcOffset::UTC).unwrap());
+        assert2::assert!(parse_date(input, UtcOffset::UTC).unwrap() == expected);
     }
 }
