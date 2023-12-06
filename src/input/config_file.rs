@@ -1,14 +1,13 @@
 use figment::providers::{Env, Format, Json};
 use figment::Figment;
 use std::path::PathBuf;
-use time::format_description;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Configs {
     pub time_offset: Option<(i8, i8, i8)>,
-    pub journal: Option<JournalConfigs>,
-    pub task: Option<TaskConfigs>,
+    // pub journal: Option<JournalConfigs>,
+    // pub task: Option<TskConfigs>,
     pub river: Option<RiverConfigs>,
 }
 
@@ -36,19 +35,6 @@ impl TryFrom<&PathBuf> for Configs {
 pub enum ConfigErr {
     #[error("could not extract configuration: {0}")]
     ExtractionFailed(#[from] figment::Error),
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct JournalConfigs {
-    pub path: Option<PathBuf>,
-    pub file_name_format: Option<String>,
-}
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TaskConfigs {
-    pub path: Option<PathBuf>,
-    pub file_name_format: Option<String>,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -81,25 +67,6 @@ impl Configs {
     //             ))?,
     //     )?)
     // }
-    pub fn task_path(&self) -> Result<PathBuf, Error> {
-        self.task
-            .clone()
-            .ok_or(Error::DirDoesNotExist)?
-            .path
-            .ok_or(Error::DirDoesNotExist)
-    }
-    pub fn task_file_formatting(&self) -> Result<format_description::OwnedFormatItem, Error> {
-        Ok(format_description::parse_owned::<2>(
-            &self
-                .task
-                .clone()
-                .ok_or(Error::UnsetConfiguration("task".to_owned()))?
-                .file_name_format
-                .ok_or(Error::UnsetConfiguration(
-                    "task.file_name_format".to_owned(),
-                ))?,
-        )?)
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]

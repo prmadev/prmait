@@ -18,11 +18,16 @@ default = ["serde"]
 path = "src/lib.rs"
 
 [[bin]]
-path = "src/bin/prmait.rs"
-name = "prmait"
+path = "src/bin/rvr.rs"
+name = "rvr"
+
 [[bin]]
 path = "src/bin/jnl.rs"
 name = "jnl"
+
+[[bin]]
+path = "src/bin/tsk.rs"
+name = "tsk"
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }

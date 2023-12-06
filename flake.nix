@@ -61,12 +61,19 @@
       craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
       cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-      prmait = craneLib.buildPackage {
+      rvr = craneLib.buildPackage {
         inherit src;
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
-        name = "prmait";
-        cargoExtraArgs = "--bin prmait --locked";
+        name = "rvr";
+        cargoExtraArgs = "--bin rvr --locked";
+      };
+      tsk = craneLib.buildPackage {
+        inherit src;
+        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+        CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+        name = "tsk";
+        cargoExtraArgs = "--bin tsk --locked";
       };
       jnl = craneLib.buildPackage {
         inherit src;
@@ -77,7 +84,8 @@
       };
     in {
       inherit jnl;
-      inherit prmait;
+      inherit tsk;
+      inherit rvr;
       checks = {
         my-crate-clippy = craneLib.cargoClippy (commonArgs
           // {
@@ -116,15 +124,20 @@
           });
       };
 
-      packages.prmait = prmait;
+      packages.tsk = tsk;
       packages.jnl = jnl;
+      packages.rvr = rvr;
       apps.jnl = flake-utils.lib.mkApp {
         name = "jnl";
         drv = jnl;
       };
-      apps.prmait = flake-utils.lib.mkApp {
-        name = "prmait";
-        drv = prmait;
+      apps.rvr = flake-utils.lib.mkApp {
+        name = "rvr";
+        drv = rvr;
+      };
+      apps.tsk = flake-utils.lib.mkApp {
+        name = "rvr";
+        drv = tsk;
       };
     });
 }
