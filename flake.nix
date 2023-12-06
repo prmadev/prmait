@@ -42,7 +42,6 @@
       src = craneLib.cleanCargoSource (craneLib.path ./.);
       commonArgs = {
         inherit src;
-        strictDeps = true;
 
         buildInputs =
           [
@@ -54,7 +53,6 @@
           ];
 
         # Additional environment variables can be set directly
-        # MY_CUSTOM_VAR = "some value";
       };
       rustToolchain = pkgs.rust-bin.stable.latest.default.override {
         targets = ["x86_64-unknown-linux-musl"];
@@ -64,16 +62,21 @@
 
       cargoArtifacts = craneLib.buildDepsOnly commonArgs;
       prmait = craneLib.buildPackage {
-        src = craneLib.cleanCargoSource (craneLib.path ./.);
-        strictDeps = true;
-
+        inherit src;
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+        name = "prmait";
+        cargoExtraArgs = "--bin prmait --locked ";
+      };
+      jnl = craneLib.buildPackage {
+        inherit src;
+        name = "jnl";
+        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+        CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+        cargoExtraArgs = "--bin jnl --locked ";
       };
     in {
       checks = {
-        inherit prmait;
-
         my-crate-clippy = craneLib.cargoClippy (commonArgs
           // {
             inherit cargoArtifacts;
@@ -111,6 +114,15 @@
           });
       };
 
-      packages.default = prmait;
+      packages.prmait = prmait;
+      packages.jnl = jnl;
+      # apps.jnl = flake-utils.lib.mkApp {
+      #   name = "jnl";
+      #   drv = jnl;
+      # };
+      # apps.prmait = flake-utils.lib.mkApp {
+      #   name = "prmait";
+      #   drv = prmait;
+      # };
     });
 }

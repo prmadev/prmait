@@ -2,15 +2,13 @@ use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
 use color_eyre::Report;
 use prmait::effects::{EffectKind, EffectMachine};
-use prmait::input::{
-    Args, Commands, Configs, JournalCommands, JournalEditCommands, TaskCommands, TaskListCommand,
-};
+use prmait::input::{Args, Commands, Configs, TaskCommands, TaskListCommand};
 use prmait::tasks::effectors::{mark_task_as, tasks_by_state, todays_task};
 use prmait::tasks::task::{State, Task};
 use prmait::tasks::tasklist::TaskList;
-use prmait::{git, journal, river, tasks, timeutils};
+use prmait::{git, river, tasks, timeutils};
 use std::env;
-use std::{ffi::OsString, path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
@@ -73,70 +71,6 @@ fn to_effect_machine(
     task_dir: &PathBuf,
 ) -> Result<EffectMachine, Report> {
     Ok(match general_command {
-        Commands::J { journal_command } | Commands::Journal { journal_command } => {
-            match journal_command {
-                JournalCommands::New {
-                    entry,
-                    tag,
-                    mood,
-                    people,
-                } => {
-                    let repo_root =  git::repo_root(&config.journal_path()?)?.to_string_lossy().into_owned();
-                    journal::effectors::new_entry(
-                        &journal::Entry {
-                            at: now,
-                            body: Arc::new(entry),
-                            tag,
-                            mood,
-                            people,
-                        },
-                        &config.journal_path()?,
-                        &repo_root,
-                        now,
-                        &config.journal_file_formatting()?,
-                    )?
-                }
-                JournalCommands::List => {
-                    let format = time::format_description::parse_borrowed::<2>("[year]-[month]-[day] [hour]:[minute]")?;
-                    journal::effectors::list_entries(
-                                    &journal::Book::try_from(&config.journal_path()?)?,
-                                    &format,
-                                )?
-                },
-                JournalCommands::Edit(edit_type) => {
-                    let repo_root = git::repo_root(&config.journal_path()?)?.to_string_lossy().into_owned();
-                    match edit_type {
-                        JournalEditCommands::Last => journal::effectors::edit_last_entry(
-                            &config.journal_path()?,
-                            &journal::Book::try_from(&config.journal_path()?)?,
-                            &repo_root,
-                            editor(env::var_os("EDITOR"))?,
-                        )?,
-                        JournalEditCommands::All => journal::effectors::edit_all_entries(
-                            editor(env::var_os("EDITOR"))?,
-                            &journal::Book::try_from(&config.journal_path()?)?,
-                            &repo_root,
-                        )?,
-                        JournalEditCommands::Specific { item } => {
-                            journal::effectors::edit_specific_entry(
-                                &config.journal_path()?,
-                                &item,
-                                &journal::Book::try_from(&config.journal_path()?)?,
-                                &repo_root,
-                                editor(env::var_os("EDITOR"))?,
-                            )?
-                        }
-                    }
-                }
-                // JournalCommands::Delete => journal::handlers::delete_interactive(
-                //     &config.journal_path()?,
-                //     20,
-                //     journal::Book::try_from(&config.journal_path()?)?,
-                //     &well_known::Rfc3339,
-                // )?,
-            }
-        }
-
         Commands::T { task_command } | Commands::Task { task_command } => match task_command {
             TaskCommands::New {
                 title,
@@ -296,15 +230,15 @@ fn to_effect_machine(
     })
 }
 
-fn editor(extractor: Option<OsString>) -> Result<String> {
-    let editor = extractor.ok_or(Report::msg("editor variable is not specified"))?;
-    if editor.is_empty() {
-        return Err(Report::msg("editor variable is not specified"));
-    };
-    match editor.into_string() {
-        Ok(s) => Ok(s),
-        Err(e) => Err(Report::msg(format!(
-            "could not convert file name to string: {e:?}"
-        ))),
-    }
-}
+// fn editor(extractor: Option<OsString>) -> Result<String> {
+//     let editor = extractor.ok_or(Report::msg("editor variable is not specified"))?;
+//     if editor.is_empty() {
+//         return Err(Report::msg("editor variable is not specified"));
+//     };
+//     match editor.into_string() {
+//         Ok(s) => Ok(s),
+//         Err(e) => Err(Report::msg(format!(
+//             "could not convert file name to string: {e:?}"
+//         ))),
+//     }
+// }

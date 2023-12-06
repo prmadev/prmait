@@ -1,5 +1,5 @@
-use crate::{journal::Mood, tasks::task::Area};
-use clap::{command, Parser, Subcommand};
+use crate::tasks::task::Area;
+use clap::{arg, command, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Parser)]
@@ -22,17 +22,17 @@ pub enum Commands {
         shell: clap_complete_command::Shell,
     },
     /// Journaling
-    J {
-        /// journal commands
-        #[command(subcommand)]
-        journal_command: JournalCommands,
-    },
-    /// Journaling
-    Journal {
-        /// journal commands
-        #[command(subcommand)]
-        journal_command: JournalCommands,
-    },
+    // J {
+    //     /// journal commands
+    //     #[command(subcommand)]
+    //     journal_command: JnlCommands,
+    // },
+    // /// Journaling
+    // Journal {
+    //     /// journal commands
+    //     #[command(subcommand)]
+    //     journal_command: JnlCommands,
+    // },
     /// Task Management
     T {
         /// task commands
@@ -49,30 +49,34 @@ pub enum Commands {
     Tasks,
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
-pub enum JournalCommands {
-    /// New Entry
-    New {
-        entry: String,
-        /// Tags that apply to this item [OPTIONAL]
-        #[arg(short = 't', long)]
-        tag: Vec<String>,
-        /// Mood associated with this entry [Required]
-        #[arg(short = 'm', long)]
-        mood: Mood,
-        /// People related to this entry  [OPTIONAL]
-        #[arg(short = 'p', long)]
-        people: Vec<String>,
-    },
-    /// List of entries
-    List,
-    /// edit commands
-    #[command(subcommand)]
-    Edit(JournalEditCommands),
-    // interactively delete an entry
-    // Delete,
-}
+// #[derive(Clone, Debug, Subcommand)]
+// pub enum JnlCommands {
+//     Completions {
+//         /// The shell to generate the completions for
+//         #[arg(value_enum)]
+//         shell: clap_complete_command::Shell,
+//     },
+//     /// New Entry
+//     New {
+//         entry: String,
+//         /// Tags that apply to this item [OPTIONAL]
+//         #[arg(short = 't', long)]
+//         tag: Vec<String>,
+//         /// Mood associated with this entry [Required]
+//         #[arg(short = 'm', long)]
+//         mood: Mood,
+//         /// People related to this entry  [OPTIONAL]
+//         #[arg(short = 'p', long)]
+//         people: Vec<String>,
+//     },
+//     /// List of entries
+//     List,
+//     /// edit commands
+//     #[command(subcommand)]
+//     Edit(JournalEditCommands),
+//     // interactively delete an entry
+//     // Delete,
+// }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
@@ -132,17 +136,6 @@ pub enum TaskListCommand {
     //     status_is:
 
     // }
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Subcommand)]
-pub enum JournalEditCommands {
-    /// Only edit the last entry
-    Last,
-    /// Open every entry in the editor
-    All,
-    /// Open only strings matching the given entry
-    Specific { item: String },
 }
 
 #[cfg(test)]

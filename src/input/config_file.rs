@@ -62,31 +62,31 @@ pub struct RiverConfigs {
 }
 
 impl Configs {
-    pub fn journal_path(&self) -> Result<PathBuf, Error> {
-        self.journal
-            .clone()
-            .ok_or(Error::DirDoesNotExist)?
-            .path
-            .ok_or(Error::DirDoesNotExist)
-    }
+    // pub fn journal_path(&self) -> Result<PathBuf, Error> {
+    //     self.journal
+    //         .clone()
+    //         .ok_or(Error::DirDoesNotExist)?
+    //         .path
+    //         .ok_or(Error::DirDoesNotExist)
+    // }
+    // pub fn journal_file_formatting(&self) -> Result<format_description::OwnedFormatItem, Error> {
+    //     Ok(format_description::parse_owned::<2>(
+    //         &self
+    //             .journal
+    //             .clone()
+    //             .ok_or(Error::UnsetConfiguration("journal".to_owned()))?
+    //             .file_name_format
+    //             .ok_or(Error::UnsetConfiguration(
+    //                 "journal.file_name_format".to_owned(),
+    //             ))?,
+    //     )?)
+    // }
     pub fn task_path(&self) -> Result<PathBuf, Error> {
         self.task
             .clone()
             .ok_or(Error::DirDoesNotExist)?
             .path
             .ok_or(Error::DirDoesNotExist)
-    }
-    pub fn journal_file_formatting(&self) -> Result<format_description::OwnedFormatItem, Error> {
-        Ok(format_description::parse_owned::<2>(
-            &self
-                .journal
-                .clone()
-                .ok_or(Error::UnsetConfiguration("journal".to_owned()))?
-                .file_name_format
-                .ok_or(Error::UnsetConfiguration(
-                    "journal.file_name_format".to_owned(),
-                ))?,
-        )?)
     }
     pub fn task_file_formatting(&self) -> Result<format_description::OwnedFormatItem, Error> {
         Ok(format_description::parse_owned::<2>(
