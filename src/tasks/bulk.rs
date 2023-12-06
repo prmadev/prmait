@@ -144,6 +144,7 @@ mod testing {
     #[case::back("01 back ttask description", (1, Action::Backlog))]
     #[should_panic]
     fn bulk_parser_oneline_not_happy(#[case] input: &str, #[case] expect: (u64, Action)) {
+        #[allow(clippy::unwrap_used)]
         assert_eq!(action_from_line(input).unwrap(), expect);
     }
     #[rstest]
@@ -155,43 +156,44 @@ mod testing {
     #[fixture]
     fn tasks() -> (Vec<Task>, String) {
         let now = time::OffsetDateTime::now_utc();
-        let mut v = vec![];
-        v.push(Task {
-            id: now.unix_timestamp(),
-            time_created: now,
-            state_log: vec![State::ToDo(now)],
-            title: "first one".to_owned(),
-            description: None,
-            area: None,
-            people: vec![],
-            projects: vec![],
-            start: None,
-            end: None,
-        });
-        v.push(Task {
-            id: now.unix_timestamp(),
-            time_created: now,
-            state_log: vec![State::ToDo(now)],
-            title: "second task".to_owned(),
-            description: None,
-            area: None,
-            people: vec![],
-            projects: vec![],
-            start: None,
-            end: None,
-        });
-        v.push(Task {
-            id: now.unix_timestamp(),
-            time_created: now,
-            state_log: vec![State::ToDo(now)],
-            title: "third task".to_owned(),
-            description: None,
-            area: None,
-            people: vec![],
-            projects: vec![],
-            start: None,
-            end: None,
-        });
+        let v = vec![
+            Task {
+                id: now.unix_timestamp(),
+                time_created: now,
+                state_log: vec![State::ToDo(now)],
+                title: "first one".to_owned(),
+                description: None,
+                area: None,
+                people: vec![],
+                projects: vec![],
+                start: None,
+                end: None,
+            },
+            Task {
+                id: now.unix_timestamp(),
+                time_created: now,
+                state_log: vec![State::ToDo(now)],
+                title: "second task".to_owned(),
+                description: None,
+                area: None,
+                people: vec![],
+                projects: vec![],
+                start: None,
+                end: None,
+            },
+            Task {
+                id: now.unix_timestamp(),
+                time_created: now,
+                state_log: vec![State::ToDo(now)],
+                title: "third task".to_owned(),
+                description: None,
+                area: None,
+                people: vec![],
+                projects: vec![],
+                start: None,
+                end: None,
+            },
+        ];
         (
             v,
             "000\tignr\tfirst one\n001\tignr\tsecond task\n002\tignr\tthird task\n".to_owned(),

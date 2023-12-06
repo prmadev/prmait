@@ -218,6 +218,7 @@ pub fn edit_all_entries(editor: String, book: &Book, repo_root: &str) -> Result<
 
 #[cfg(test)]
 mod testing {
+    #[allow(clippy::unwrap_used)]
     use std::sync::Arc;
 
     use crate::journal::Mood;
@@ -256,7 +257,7 @@ mod testing {
         #[case] repo_root: &str,
         #[case] at: OffsetDateTime,
     ) {
-        let em = new_entry(&entry, &journal_path, &repo_root, at, &well_known::Rfc3339).unwrap();
+        let em = new_entry(&entry, &journal_path, repo_root, at, &well_known::Rfc3339).unwrap();
         assert_eq!(em.0.len(), 6);
     }
 }

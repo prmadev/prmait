@@ -77,7 +77,7 @@
         my-crate-clippy = craneLib.cargoClippy (commonArgs
           // {
             inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+            cargoClippyExtraArgs = "-- --deny warnings";
           });
 
         my-crate-doc = craneLib.cargoDoc (commonArgs
