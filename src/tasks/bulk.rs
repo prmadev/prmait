@@ -144,7 +144,6 @@ mod testing {
     #[case::back("01 back ttask description", (1, Action::Backlog))]
     #[should_panic]
     fn bulk_parser_oneline_not_happy(#[case] input: &str, #[case] expect: (u64, Action)) {
-        #[allow(clippy::unwrap_used)]
         assert_eq!(action_from_line(input).unwrap(), expect);
     }
     #[rstest]
