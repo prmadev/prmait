@@ -215,3 +215,48 @@ pub fn edit_all_entries(editor: String, book: &Book, repo_root: &str) -> Result<
 
     Ok(effects)
 }
+
+#[cfg(test)]
+mod testing {
+    use std::sync::Arc;
+
+    use crate::journal::Mood;
+
+    #[allow(clippy::wildcard_imports)]
+    use super::*;
+    use rstest::*;
+    use time::format_description::well_known;
+
+    #[fixture]
+    fn entry() -> Entry {
+        let now = time::OffsetDateTime::now_utc();
+        let body = Arc::new(String::from("body"));
+        let mood = Mood::Good;
+        let tag = vec!["tag1".to_owned(), "tag2".to_owned()];
+        let people = vec!["hoverbear".to_owned(), "mr_leafslug".to_owned()];
+
+        Entry {
+            at: now,
+            body,
+            tag,
+            mood,
+            people,
+        }
+    }
+    #[fixture]
+    fn journal_path() -> PathBuf {
+        PathBuf::new()
+    }
+
+    #[rstest]
+    #[case("somerepo", time::OffsetDateTime::now_utc())]
+    fn test_new(
+        entry: Entry,
+        journal_path: PathBuf,
+        #[case] repo_root: &str,
+        #[case] at: OffsetDateTime,
+    ) {
+        let em = new_entry(&entry, &journal_path, &repo_root, at, &well_known::Rfc3339).unwrap();
+        assert_eq!(em.0.len(), 6);
+    }
+}

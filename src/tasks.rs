@@ -1,3 +1,4 @@
+pub mod bulk;
 pub mod effectors;
 pub mod error;
 pub mod task;

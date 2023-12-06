@@ -36,6 +36,8 @@ pub enum Error {
     FileNameHasInvalidCharacters,
     #[error("the path is not a file")]
     IsNotAFile,
+    #[error("something went wrong in parsing line: {0}")]
+    ParsingLineFailed(Box<String>),
 }
 #[cfg(test)]
 mod testing {

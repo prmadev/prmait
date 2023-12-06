@@ -54,7 +54,7 @@ pub struct Effect {
 }
 
 #[derive(Clone, Debug)]
-pub struct EffectMachine(Vec<Effect>);
+pub struct EffectMachine(pub Vec<Effect>);
 
 impl EffectMachine {
     pub fn run(self) -> Result<()> {
