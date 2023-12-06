@@ -2,14 +2,11 @@ use figment::providers::{Env, Format, Json};
 use figment::Figment;
 use std::path::PathBuf;
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Configs {
-    pub time_offset: Option<(i8, i8, i8)>,
-    // pub journal: Option<JournalConfigs>,
-    // pub task: Option<TskConfigs>,
-    pub river: Option<RiverConfigs>,
-}
+// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+// #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+// pub struct Configs {
+//     pub river: Option<Configs>,
+// }
 
 impl TryFrom<PathBuf> for Configs {
     type Error = ConfigErr;
@@ -39,7 +36,7 @@ pub enum ConfigErr {
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct RiverConfigs {
+pub struct Configs {
     pub colors: crate::river::Colors,
     pub hardware: crate::river::Hardware,
     pub apps: crate::river::Apps,

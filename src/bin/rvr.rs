@@ -43,9 +43,7 @@ fn to_effect_machine(general_command: Commands, config: Configs) -> Result<Effec
             ef
         }
         Commands::River => {
-            let river_config = &config
-                .river
-                .ok_or(Report::msg("river settings not found"))?;
+            let river_config = &config;
 
             river::run(
                 river_config.border_width,
