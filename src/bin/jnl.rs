@@ -134,7 +134,7 @@ fn editor(extractor: Option<OsString>) -> Result<String> {
 }
 
 #[derive(Clone, Debug, Parser)]
-#[command(version,about, long_about = None, arg_required_else_help = true)]
+#[command(version,about="Personal journaling, like never before", long_about = None, arg_required_else_help = true)]
 pub struct Args {
     /// Sets a custom config file
     #[arg(short, long, value_name = "FILE")]

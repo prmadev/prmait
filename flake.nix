@@ -66,9 +66,18 @@
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
         name = "prmait";
-        cargoExtraArgs = "--bins --locked";
+        cargoExtraArgs = "--bin prmait --locked";
+      };
+      jnl = craneLib.buildPackage {
+        inherit src;
+        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+        CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+        name = "jnl";
+        cargoExtraArgs = "--bin jnl  --locked";
       };
     in {
+      inherit jnl;
+      inherit prmait;
       checks = {
         my-crate-clippy = craneLib.cargoClippy (commonArgs
           // {
@@ -108,13 +117,14 @@
       };
 
       packages.prmait = prmait;
-      # apps.jnl = flake-utils.lib.mkApp {
-      #   name = "jnl";
-      #   drv = jnl;
-      # };
-      # apps.prmait = flake-utils.lib.mkApp {
-      #   name = "prmait";
-      #   drv = prmait;
-      # };
+      packages.jnl = jnl;
+      apps.jnl = flake-utils.lib.mkApp {
+        name = "jnl";
+        drv = jnl;
+      };
+      apps.prmait = flake-utils.lib.mkApp {
+        name = "prmait";
+        drv = prmait;
+      };
     });
 }
