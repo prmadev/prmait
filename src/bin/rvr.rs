@@ -6,7 +6,7 @@ use prmait::input::{Args, Commands, Configs};
 use prmait::river;
 use std::path::PathBuf;
 
-const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
+const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/rvr.json";
 
 fn main() -> Result<()> {
     // error message management
@@ -57,4 +57,3 @@ fn to_effect_machine(general_command: Commands, config: Configs) -> Result<Effec
         }
     })
 }
-

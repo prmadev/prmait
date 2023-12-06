@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use time::format_description::{self, well_known};
 use time::OffsetDateTime;
 
-const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/config.json";
+const DEFAULT_CONFIG_PATH: &str = "/home/a/.config/prmait/tsk.json";
 
 fn main() -> Result<()> {
     // error message management

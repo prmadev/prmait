@@ -66,6 +66,8 @@
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
         name = "rvr";
+        pname = "rvr";
+        version = "0.1";
         cargoExtraArgs = "--bin rvr --locked";
       };
       tsk = craneLib.buildPackage {
@@ -73,6 +75,8 @@
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
         name = "tsk";
+        pname = "tsk";
+        version = "0.1";
         cargoExtraArgs = "--bin tsk --locked";
       };
       jnl = craneLib.buildPackage {
@@ -80,6 +84,8 @@
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
         name = "jnl";
+        pname = "jnl";
+        version = "0.1";
         cargoExtraArgs = "--bin jnl  --locked";
       };
     in {
