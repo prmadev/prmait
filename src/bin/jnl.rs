@@ -38,7 +38,7 @@ fn main() -> Result<()> {
         return Ok(());
     };
 
-    let efs = to_effect_machine(command, now, config)?;
+    let efs = to_effect_machine(command, now, &config)?;
     efs.run()?;
 
     Ok(())

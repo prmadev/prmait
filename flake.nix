@@ -66,14 +66,7 @@
         CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
         name = "prmait";
-        cargoExtraArgs = "--bin prmait --locked ";
-      };
-      jnl = craneLib.buildPackage {
-        inherit src;
-        name = "jnl";
-        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-        CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
-        cargoExtraArgs = "--bin jnl --locked ";
+        cargoExtraArgs = "--bins --locked";
       };
     in {
       checks = {
@@ -115,7 +108,6 @@
       };
 
       packages.prmait = prmait;
-      packages.jnl = jnl;
       # apps.jnl = flake-utils.lib.mkApp {
       #   name = "jnl";
       #   drv = jnl;
