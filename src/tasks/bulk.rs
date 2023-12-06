@@ -8,7 +8,14 @@ use nom::{
     Finish,
 };
 
-use super::Error;
+use super::{task::Task, Error};
+pub fn form_file_action(tasks: &[Task]) -> String {
+    tasks
+        .iter()
+        .enumerate()
+        .map(|(i, t)| format!("{i:03}\tignr\t{}", t.title))
+        .fold(String::new(), |accu, l| format!("{accu}{l}\n"))
+}
 
 pub fn multiple_lines(input: &str) -> Result<Vec<(u64, Action)>, Error> {
     input
@@ -112,6 +119,8 @@ pub enum Action {
 }
 #[cfg(test)]
 mod testing {
+    use crate::tasks::task::State;
+
     #[allow(clippy::wildcard_imports)]
     use super::*;
     use rstest::*;
@@ -142,5 +151,54 @@ mod testing {
     #[case::done_single("0\tdone\ttask description\n", vec![(0, Action::Done)])]
     fn bulk_parser_multiline(#[case] input: &str, #[case] expect: Vec<(u64, Action)>) {
         assert_eq!(multiple_lines(input).unwrap(), expect);
+    }
+    #[fixture]
+    fn tasks() -> (Vec<Task>, String) {
+        let now = time::OffsetDateTime::now_utc();
+        let mut v = vec![];
+        v.push(Task {
+            id: now.unix_timestamp(),
+            time_created: now,
+            state_log: vec![State::ToDo(now)],
+            title: "first one".to_owned(),
+            description: None,
+            area: None,
+            people: vec![],
+            projects: vec![],
+            start: None,
+            end: None,
+        });
+        v.push(Task {
+            id: now.unix_timestamp(),
+            time_created: now,
+            state_log: vec![State::ToDo(now)],
+            title: "second task".to_owned(),
+            description: None,
+            area: None,
+            people: vec![],
+            projects: vec![],
+            start: None,
+            end: None,
+        });
+        v.push(Task {
+            id: now.unix_timestamp(),
+            time_created: now,
+            state_log: vec![State::ToDo(now)],
+            title: "third task".to_owned(),
+            description: None,
+            area: None,
+            people: vec![],
+            projects: vec![],
+            start: None,
+            end: None,
+        });
+        (
+            v,
+            "000\tignr\tfirst one\n001\tignr\tsecond task\n002\tignr\tthird task\n".to_owned(),
+        )
+    }
+    #[rstest]
+    fn test_the_tasks(tasks: (Vec<Task>, String)) {
+        assert_eq!(form_file_action(&tasks.0), tasks.1);
     }
 }
